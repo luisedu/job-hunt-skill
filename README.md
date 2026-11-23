@@ -28,7 +28,7 @@ git clone https://github.com/luisedu/job-hunt-skill
 ln -s "$PWD/job-hunt-skill/skill/job-hunt" ~/.claude/skills/job-hunt
 ```
 
-Requirements: Python 3.9+, `curl`, `pdftotext` (poppler-utils) and LibreOffice (`soffice`) for PDF output.
+Requirements: Python 3.11+, `curl`, `pdftotext` (poppler-utils) and LibreOffice (`soffice`) for PDF output.
 
 ## Use
 
