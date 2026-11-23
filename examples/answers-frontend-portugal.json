@@ -1,0 +1,23 @@
+{
+  "name": "Ana Example",
+  "headline": "Senior Frontend Engineer (React, TypeScript)",
+  "homeCountry": "Portugal",
+  "homeCity": "Lisbon",
+  "currency": "EUR",
+  "languages": "Portuguese (native), English (fluent), Spanish (intermediate)",
+  "targetRoles": "Senior Frontend / React engineer",
+  "seniority": ["mid", "senior"],
+  "queries": ["frontend", "react", "typescript"],
+  "titleKeywords": ["frontend", "front-end", "front end", "react", "ui engineer", "web engineer"],
+  "textKeywords": ["react", "typescript", "next.js", "css", "design system", "accessibility", "vite"],
+  "excludeTitleUnlessKeyword": ["backend", "mobile", "llm", "agentic"],
+  "allowedRegions": ["portugal", "europe", "eu", "emea", "cet", "wet"],
+  "hybridOkCities": ["lisbon"],
+  "remoteOnly": true,
+  "floorMonthly": 3500,
+  "targetRate": "EUR 45/h contractor or EUR 60k/yr employee",
+  "excludedCompanies": ["Example Bad Corp"],
+  "fit": {"react": 2, "typescript": 2, "next\\.js": 1, "design system": 1, "accessibility|a11y": 1, "senior": 1},
+  "penalizeKeywords": ["php", "wordpress"],
+  "sources": {"arbeitnow": true, "gupy": false, "getonbrd": false, "remoterocketship": false}
+}
