@@ -16,6 +16,8 @@ The skill scripts read the JSON block below. Edit values here. Hard rules live i
 - `pay.floorMonthly`: in `profile.currency`. Jobs whose top of range is below it are dropped. `maxPlausibleMonthly` triggers a scam flag.
 - `ghost`: age limits and repost window (days).
 - `fit`: regex → weight, for ranking. `penalizeKeywords`: −2 each.
+- `excludedRoles`: `[{"company": "…", "title": "…"}]` drops one role (and its reposts) without excluding the whole company. Titles are compared without seniority words, so "Senior X" also drops a repost titled "X".
+- `atsBoards`: company job boards to scan directly, by system: `{"greenhouse": [...], "ashby": [...], "lever": [...], "workable": [...]}`. Find slugs with `scan.py --probe-ats name1,name2`.
 - `sources`: turn boards on/off (see `search/sources.md`). `gupyTerms`: Portuguese terms for Gupy (Brazil).
 
 ## Tuning log

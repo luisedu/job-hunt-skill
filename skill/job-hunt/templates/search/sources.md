@@ -25,3 +25,9 @@ LinkedIn, Indeed, Glassdoor, Wellfound. Search them yourself with filters: role 
 
 ## Notes
 _(add quirks, broken endpoints and yield observations here)_
+
+## Company job boards (`ats` source)
+Public JSON APIs, no key: Greenhouse, Ashby, Lever, Workable. List target companies in `filters.md` → `atsBoards`. Most companies hire locally, so the value is catching a remote opening for your region the day it's posted. Many large companies use Workday or their own site instead: check those by hand.
+
+## Pages that block plain HTTP
+If a page needs JavaScript or blocks scripts (some LinkedIn posts, some career sites), a scraping MCP such as Firecrawl can read it. Use it only as a fallback for single pages; free tiers have small credit budgets.

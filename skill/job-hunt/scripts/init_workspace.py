@@ -64,6 +64,8 @@ def filters_json(a):
         "fit": a.get("fit", {}),
         "penalizeKeywords": a.get("penalizeKeywords", []),
         "excludedCompanies": a.get("excludedCompanies", []),
+        "excludedRoles": a.get("excludedRoles", []),
+        "atsBoards": a.get("atsBoards", {"greenhouse": [], "ashby": [], "lever": [], "workable": []}),
     }
     return json.dumps(cfg, indent=2, ensure_ascii=False)
 
@@ -97,7 +99,7 @@ def main():
             os.makedirs(os.path.dirname(dst), exist_ok=True)
             open(dst, "w", encoding="utf-8").write(render(open(src, encoding="utf-8").read(), a))
             created.append(rel)
-    for d in ("curriculum", "search/scans"):
+    for d in ("curriculum", "search/scans", "outcomes/postings"):
         os.makedirs(os.path.join(ws, d), exist_ok=True)
     gi = os.path.join(ws, ".gitignore")
     if not os.path.exists(gi):

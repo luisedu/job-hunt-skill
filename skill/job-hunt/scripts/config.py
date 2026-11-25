@@ -7,7 +7,7 @@ DEFAULTS = {
     "gupyTerms": [],
     "sources": {
         "remoterocketship": False, "remoteok": True, "remotive": True, "himalayas": True, "jobicy": True,
-        "arbeitnow": False, "weworkremotely": True, "workingnomads": True, "getonbrd": False, "gupy": False, "hn": True,
+        "arbeitnow": False, "weworkremotely": True, "workingnomads": True, "getonbrd": False, "gupy": False, "hn": True, "ats": True,
     },
     "remoteRocketship": {"apiKeyFile": "~/.config/remoterocketship/api-key", "seniority": ["mid", "senior"], "maxPages": 3},
     "roles": {
@@ -26,6 +26,8 @@ DEFAULTS = {
     "fit": {},
     "penalizeKeywords": [],
     "excludedCompanies": [],
+    "excludedRoles": [],
+    "atsBoards": {"greenhouse": [], "ashby": [], "lever": [], "workable": []},
     "fallbackFxPerCurrency": {},
 }
 
