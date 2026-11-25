@@ -5,7 +5,7 @@ Implemented in the skill's `scripts/scan.py`. Turn on/off in `search/filters.md`
 | Key | Board | Coverage | Notes |
 |---|---|---|---|
 | `remoteok` | RemoteOK API | global remote, tech | Full feed (~100). Location often "US Only" |
-| `remotive` | Remotive API | global remote | Per query. Salary as free text |
+| `remotive` | Remotive API | global remote | Free API returns only ~15 recent jobs per request (Nov 2026). One request, cached 6 h, max 4/day (their terms); queries matched locally. Salary as free text |
 | `himalayas` | Himalayas API | global remote | Per query, `locationRestrictions` list (empty = unrestricted) |
 | `jobicy` | Jobicy API | global remote | Per query as tag. `jobGeo` |
 | `weworkremotely` | WWR RSS | global remote | Category feeds. `region` tag |
@@ -31,3 +31,8 @@ Public JSON APIs, no key: Greenhouse, Ashby, Lever, Workable. List target compan
 
 ## Pages that block plain HTTP
 If a page needs JavaScript or blocks scripts (some LinkedIn posts, some career sites), a scraping MCP such as Firecrawl can read it. Use it only as a fallback for single pages; free tiers have small credit budgets.
+
+## Terms of use
+- Always show the source name and the original job link (RemoteOK, Remotive and Jobicy require attribution and a link back).
+- Never republish job data on other sites or use it to collect sign-ups. This workspace is for your personal search.
+- Respect each source's rate limits. Don't run full scans more than a couple of times a day.

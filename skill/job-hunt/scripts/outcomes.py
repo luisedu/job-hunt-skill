@@ -11,6 +11,8 @@ Usage:
         [--reason CODES] [--note TEXT] [--date YYYY-MM-DD] [--data JSON] [--job ID] [--reply "user's words"]
   python3 outcomes.py --workspace WS stats                          # funnel summary
   python3 outcomes.py --workspace WS calibrate                      # does the fit score predict progress?
+  python3 outcomes.py --workspace WS redact "Jane Doe" [more terms]   # erase a person's name/email everywhere in the log
+  python3 outcomes.py --workspace WS export [out.jsonl]              # anonymised copy: codes + features only
 
 `event --event decision --value applied` also snapshots the posting text into outcomes/postings/,
 so you can later check whether the job matched what was advertised.
@@ -163,6 +165,44 @@ def log_event(ws, company, title, event, value, reason=None, note=None, date=Non
     return row
 
 
+def redact(ws, terms):
+    """Privacy exception to append-only: remove a person's data (name, email, phone) from every event.
+    Rewrites the log in place and returns how many events changed."""
+    log, n = Log(ws), 0
+    rows = log.load()
+    pats = [re.compile(re.escape(t), re.I) for t in terms if t.strip()]
+    out = []
+    for r in rows:
+        before = json.dumps(r, ensure_ascii=False)
+        after = before
+        for p in pats:
+            after = p.sub("[redacted]", after)
+        n += after != before
+        out.append(json.loads(after))
+    with open(log.path, "w", encoding="utf-8") as f:
+        for r in out:
+            f.write(json.dumps(r, ensure_ascii=False) + "\n")
+    return n
+
+
+EXPORT_FEATURES = ("sources", "region", "age_days", "salary_listed", "seniority", "skills", "scam_flag", "fit", "contract", "eligibility")
+
+
+def export_anonymised(ws):
+    """Rows safe to share (opt-in only): event type, value, reason codes, month, job index and coarse features.
+    No company, title, URL, notes, replies, free-text data or exact dates."""
+    ids, out = {}, []
+    for r in Log(ws).load():
+        jid = ids.setdefault(r.get("job"), len(ids))
+        row = {"v": r.get("v"), "month": r["date"][:7], "event": r["event"], "value": r.get("value"), "reason": r.get("reason"), "job": jid}
+        if r.get("features"):
+            row["features"] = {k: r["features"].get(k) for k in EXPORT_FEATURES if k in r["features"]}
+        d = r.get("data") or {}
+        row["data"] = {k: d[k] for k in ("format", "round", "channel", "satisfaction", "role_matches_posting", "would_stay") if k in d}
+        out.append(row)
+    return out
+
+
 def reached_by_job(rows):
     stages = collections.defaultdict(set)
     for r in rows:
@@ -231,14 +271,14 @@ def calibrate(ws):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--workspace", required=True)
-    ap.add_argument("cmd", choices=["scan", "event", "stats", "calibrate"])
-    ap.add_argument("path", nargs="?")
+    ap.add_argument("cmd", choices=["scan", "event", "stats", "calibrate", "redact", "export"])
+    ap.add_argument("path", nargs="*")
     for k in ("company", "title", "event", "value", "reason", "note", "date", "data", "job", "reply"):
         ap.add_argument("--" + k)
     a = ap.parse_args()
     ws = os.path.abspath(os.path.expanduser(a.workspace))
     if a.cmd == "scan":
-        p = a.path or sorted(glob.glob(os.path.join(ws, "search", "scans", "results-????-??-??.json")))[-1]
+        p = a.path[0] if a.path else sorted(glob.glob(os.path.join(ws, "search", "scans", "results-????-??-??.json")))[-1]
         print("logged", log_scan(ws, p), "filter events from", os.path.basename(p))
     elif a.cmd == "event":
         if not (a.company and a.title and a.event and a.value):
@@ -247,6 +287,17 @@ def main():
         print("logged", row["event"], row["value"], row["job"], ("posting saved: " + row["posting"]) if row.get("posting") else "")
     elif a.cmd == "stats":
         print(stats(ws))
+    elif a.cmd == "redact":
+        if not a.path:
+            sys.exit("redact needs one or more terms (a name, email, phone)")
+        print("events changed:", redact(ws, a.path))
+    elif a.cmd == "export":
+        rows = export_anonymised(ws)
+        dest = a.path[0] if a.path else os.path.join(ws, "outcomes", "export-anonymised.jsonl")
+        with open(dest, "w", encoding="utf-8") as f:
+            for r in rows:
+                f.write(json.dumps(r, ensure_ascii=False) + "\n")
+        print(f"wrote {len(rows)} anonymised events to {dest}. Review it before sharing; sharing is always opt-in.")
     else:
         print(calibrate(ws))
 

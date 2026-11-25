@@ -20,7 +20,8 @@ _(one block per role: company, title, dates, location/remote, 2–4 factual bull
 
 ## Publications / projects
 
-## References (always keep in CVs if the CV has them)
+## References (keep in CVs only with each referee's consent)
+_For each referee, note the consent: "agreed YYYY-MM-DD". Without it, the CV says "References available on request"._
 
 ## Confirmed in conversation (usable)
 _(facts the candidate confirmed that are not in the CV: metrics, tools, stories)_
