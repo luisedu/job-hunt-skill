@@ -8,6 +8,8 @@ A [Claude Code](https://claude.com/claude-code) skill that runs your job search 
 - **Watches companies' own job boards** (Greenhouse, Ashby, Lever, Workable) for the companies you list, so you see openings the day they are posted. `--probe-ats` finds each company's board.
 - **Answers "can they hire me, and what will I take home?"** Each job gets an eligibility verdict that tells *residence* apart from *right to work* (a passport isn't an address), detects the contract type (local payroll, PJ, contractor, employer of record) and time-zone overlap, and estimates **net monthly pay** per contract. Brazil (CLT, PJ, export of services) is the first country module; other countries use your own flat rates.
 - **Checks whether a company is real:** domain age, mail setup, website, public job board, recruiter email, LEI and the Brazilian CNPJ registry, combined into an explainable trust score. It never says "safe".
+- **Turns your history into decisions:** which employers keep posting jobs you can take (and their job boards), each company's reply rate and interview format, the most-requested skills you lack and which ones come with better pay, and a weekly search-health check with one concrete suggestion.
+- **Compares offers** (local employee vs. PJ vs. foreign contract) on net pay, benefits and **currency risk**: net if the currency moves ±10–20% and over the last 12 months' real range, plus the local salary that would match each contract.
 - **Filters out the noise** most job tools ignore:
   - "remote" jobs that only hire in another country
   - ghost jobs (stale, reposted, talent pools)
@@ -72,6 +74,10 @@ After that:
 | "How is my search going?" | Funnel (`stats`) and whether the fit score predicts interviews (`calibrate`) |
 | "Is Acme legit? The recruiter wrote from gmail" | `verify_company.py`: trust score, reasons and next steps |
 | "Compare this CLT offer with that USD contract" | `netpay.py`: net monthly pay for each, with assumptions |
+| "Compare my offers" | `offers.py`: net, benefits, currency scenarios, local-salary equivalent |
+| "Which companies hire from my country?" | `insights.py employers --suggest-ats` |
+| "What should I learn next?" | `insights.py skills`: gaps across every relevant job, and pay linked to skills |
+| "How did this week go?" | `insights.py weekly`: funnel by channel, follow-ups due, one suggestion |
 | "Only show EU jobs above €4k" | Rules + filters updated, change logged |
 
 Scripts also run on their own:
@@ -83,6 +89,8 @@ python3 skill/job-hunt/scripts/scan.py   --workspace ~/JobHunt --probe-ats acme,
 python3 skill/job-hunt/scripts/outcomes.py --workspace ~/JobHunt stats       # or: calibrate
 python3 skill/job-hunt/scripts/netpay.py   --workspace ~/JobHunt --gross 25000 --contract employee_local
 python3 skill/job-hunt/scripts/verify_company.py --workspace ~/JobHunt --company Acme --domain acme.com
+python3 skill/job-hunt/scripts/insights.py --workspace ~/JobHunt weekly        # or: employers, companies, skills
+python3 skill/job-hunt/scripts/offers.py   --workspace ~/JobHunt               # reads interview/offers.json
 ```
 
 ## Configuration
@@ -91,7 +99,7 @@ All tuning lives in `search/filters.md` in your workspace (see its field guide):
 
 ## Privacy
 
-Your workspace contains your CV, salary expectations, application history and outcome log. The workspace `.gitignore` ignores everything by default. **Don't commit it.** The scripts only call public job-board APIs, an FX-rate API (frankfurter.app) and, for company checks, public registries and DNS (rdap.org, dns.google, api.gleif.org, brasilapi.com.br). Only company names and domains are sent. Nothing about you is sent anywhere.
+Your workspace contains your CV, salary expectations, application history and outcome log. The workspace `.gitignore` ignores everything by default. **Don't commit it.** The scripts only call public job-board APIs, an FX-rate API (frankfurter.app) and, for company checks, public registries and DNS (rdap.org, dns.google, api.gleif.org, brasilapi.com.br), plus frankfurter.app for exchange-rate history in offer comparisons. Only company names, domains and currency codes are sent. Nothing about you is sent anywhere.
 
 ## Sources and terms
 
@@ -100,7 +108,7 @@ Only public APIs and RSS feeds are used, including the public job-board APIs of 
 ## Tests
 
 ```bash
-python3 -m unittest discover -s tests -v    # offline: filters, outcome log, calibration, job-board parsers, net pay, eligibility, company check
+python3 -m unittest discover -s tests -v    # offline: filters, outcome log, calibration, job-board parsers, net pay, eligibility, company check, insights, offers
 ```
 
 ## License
