@@ -13,7 +13,7 @@ Normalized job: {source, sid, title, company, loc, url, text, posted (ISO-8601 U
 sal: {min, max, cur, per} | {text} | null
 Only public APIs / RSS feeds are used. No login-walled sites are scraped.
 """
-import argparse, datetime as dt, html, json, os, re, subprocess, sys, time
+import argparse, datetime as dt, html, json, os, re, stat, subprocess, sys, time, urllib.request
 from concurrent.futures import ThreadPoolExecutor
 from urllib.parse import quote
 
@@ -23,8 +23,35 @@ from config import load_config  # noqa: E402
 UA = "Mozilla/5.0 (X11; Linux x86_64) job-hunt-skill/1.0"
 
 
+CURL_SAFE = ["--proto", "=https,http", "--proto-redir", "=https,http", "--max-redirs", "5"]
+
+
 def get(url, timeout=40):
-    return subprocess.run(["curl", "-s", "-L", "-m", str(timeout), "-A", UA, url], capture_output=True, text=True).stdout
+    return subprocess.run(["curl", "-s", "-L", *CURL_SAFE, "-m", str(timeout), "-A", UA, "--", url], capture_output=True, text=True).stdout
+
+
+def cached_getj(cfg, name, url, ttl_hours, max_per_day=None):
+    """GET JSON once per ttl and at most max_per_day times a day (some APIs ask for that), cached in the workspace."""
+    ws = cfg.get("_workspace")
+    if not ws:
+        return getj(url)
+    d = os.path.join(ws, "search", "cache")
+    os.makedirs(d, exist_ok=True)
+    path, meta_path = os.path.join(d, f"{name}.json"), os.path.join(d, f"{name}.meta.json")
+    meta = json.load(open(meta_path)) if os.path.exists(meta_path) else {}
+    now, today = time.time(), dt.date.today().isoformat()
+    fresh = os.path.exists(path) and now - meta.get("fetched", 0) < ttl_hours * 3600
+    calls = meta.get("calls", {}).get(today, 0)
+    if not fresh and (max_per_day is None or calls < max_per_day):
+        data = getj(url)
+        if data is not None:
+            json.dump(data, open(path, "w"))
+            meta = {"fetched": now, "calls": {today: calls + 1}}
+            json.dump(meta, open(meta_path, "w"))
+            return data
+    elif not fresh:
+        print(f"{name}: daily request limit ({max_per_day}) reached, using cached data", file=sys.stderr)
+    return json.load(open(path)) if os.path.exists(path) else None
 
 
 def getj(url, **kw):
@@ -59,6 +86,17 @@ def job(source, sid, title, company, loc, url, text, posted, sal=None, extra=Non
 
 
 # ---------------------------------------------------------------- sources
+def rr_post(keyf, body):
+    """POST with the API key in a header, read into memory only: never in a command line, log or error message."""
+    if os.stat(keyf).st_mode & (stat.S_IRWXG | stat.S_IRWXO):
+        print(f"remoterocketship: {keyf} is readable by other users; run: chmod 600 {keyf}", file=sys.stderr)
+    key = open(keyf).read().strip()
+    req = urllib.request.Request("https://www.remoterocketship.com/api/openclaw/jobs/", data=body, method="POST",
+                                 headers={"Authorization": "Bearer " + key, "Content-Type": "application/json", "User-Agent": UA})
+    with urllib.request.urlopen(req, timeout=60) as r:
+        return json.loads(r.read().decode())
+
+
 def src_remoterocketship(cfg):
     rr = cfg.get("remoteRocketship") or {}
     keyf = os.path.expanduser(rr.get("apiKeyFile", "~/.config/remoterocketship/api-key"))
@@ -71,13 +109,9 @@ def src_remoterocketship(cfg):
             f = {"keywordFilters": [kw], "showRemoteJobs": True, "itemsPerPage": 50, "page": page}
             if rr.get("seniority"):
                 f["seniorityFilters"] = rr["seniority"]
-            body = json.dumps({"filters": f, "includeJobDescription": True})
-            # the key is read by the shell from the file; it is never printed or put in this script's args
-            r = subprocess.run(["sh", "-c", 'curl -s -m 60 -X POST https://www.remoterocketship.com/api/openclaw/jobs/ '
-                                '-H "Authorization: Bearer $(cat "$1")" -H "Content-Type: application/json" --data-binary @-', "_", keyf],
-                               input=body, capture_output=True, text=True)
+            body = json.dumps({"filters": f, "includeJobDescription": True}).encode()
             try:
-                jobs = json.loads(r.stdout).get("jobOpenings") or []
+                jobs = rr_post(keyf, body).get("jobOpenings") or []
             except Exception:
                 time.sleep(3)
                 continue
@@ -104,11 +138,16 @@ def src_remoteok(cfg):
 
 
 def src_remotive(cfg):
+    """Remotive asks for at most 4 API requests a day and attribution (source name + link back, shown in every report).
+    One full-feed request, cached for 6 hours and capped at 4 a day; queries are matched locally."""
+    words = [w.lower() for q in cfg["queries"] for w in [q] if w]
     out = []
-    for t in cfg["queries"]:
-        for j in (getj("https://remotive.com/api/remote-jobs?search=" + quote(t)) or {}).get("jobs", []):
-            out.append(job("Remotive", j["id"], j.get("title"), j.get("company_name"), j.get("candidate_required_location"), j.get("url"),
-                           j.get("description"), pdate(j.get("publication_date")), {"text": j["salary"]} if j.get("salary") else None))
+    for j in (cached_getj(cfg, "remotive", "https://remotive.com/api/remote-jobs", 6, 4) or {}).get("jobs", []):
+        hay = (j.get("title", "") + " " + j.get("description", "")[:4000]).lower()
+        if words and not any(w in hay for w in words):
+            continue
+        out.append(job("Remotive", j["id"], j.get("title"), j.get("company_name"), j.get("candidate_required_location"), j.get("url"),
+                       j.get("description"), pdate(j.get("publication_date")), {"text": j["salary"]} if j.get("salary") else None))
     return out
 
 
@@ -321,6 +360,7 @@ def main():
         return probe_ats([x.strip() for x in a.probe_ats.split(",") if x.strip()])
     ws = os.path.abspath(os.path.expanduser(a.workspace))
     cfg = load_config(ws)
+    cfg["_workspace"] = ws
     enabled = [s for s, on in cfg["sources"].items() if on and s in SOURCES]
     if a.only:
         enabled = [s for s in a.only.split(",") if s in SOURCES]

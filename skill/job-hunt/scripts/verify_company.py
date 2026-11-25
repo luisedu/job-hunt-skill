@@ -27,7 +27,7 @@ NOT_COMPANY = re.compile(r"greenhouse\.io|ashbyhq\.com|lever\.co|workable\.com|s
 
 def http(url, timeout=20):
     """(status, final_url, body) using curl; status 0 when unreachable."""
-    r = subprocess.run(["curl", "-s", "-L", "-m", str(timeout), "-A", scan.UA, "-o", "-", "-w", "\n__META__%{http_code} %{url_effective}", url],
+    r = subprocess.run(["curl", "-s", "-L", *scan.CURL_SAFE, "-m", str(timeout), "-A", scan.UA, "-o", "-", "-w", "\n__META__%{http_code} %{url_effective}", "--", url],
                        capture_output=True, text=True)
     body, _, meta = r.stdout.rpartition("\n__META__")
     code, _, final = meta.partition(" ")
@@ -223,7 +223,9 @@ class Cache:
             return r
         return None
 
-    def put(self, key, r):
+    def put(self, key, r, today=None):
+        today = today or dt.date.today()
+        self.data = {k: v for k, v in self.data.items() if (today - dt.date.fromisoformat(v["checked"])).days <= TTL_DAYS}  # keep nothing expired
         self.data[key] = r
         os.makedirs(os.path.dirname(self.path), exist_ok=True)
         json.dump(self.data, open(self.path, "w"), ensure_ascii=False, indent=1)

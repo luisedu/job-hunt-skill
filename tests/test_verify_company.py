@@ -75,7 +75,7 @@ class VerifyTest(unittest.TestCase):
 
     def test_cache_ttl(self):
         c = V.Cache(self.ws)
-        c.put("k", {"checked": "2026-11-01"})
+        c.put("k", {"checked": "2026-11-01"}, today=TODAY.date())
         self.assertIsNotNone(V.Cache(self.ws).get("k", TODAY))
         self.assertIsNone(V.Cache(self.ws).get("k", TODAY + dt.timedelta(days=40)))
 

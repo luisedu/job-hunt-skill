@@ -107,11 +107,28 @@ All tuning lives in `search/filters.md` in your workspace (see its field guide):
 
 ## Privacy
 
-Your workspace contains your CV, salary expectations, application history and outcome log. The workspace `.gitignore` ignores everything by default. **Don't commit it.** The scripts only call public job-board APIs, an FX-rate API (frankfurter.app) and, for company checks, public registries and DNS (rdap.org, dns.google, api.gleif.org, brasilapi.com.br), plus frankfurter.app for exchange-rate history in offer comparisons. Only company names, domains and currency codes are sent. Nothing about you is sent anywhere.
+Your workspace holds your CV, salary expectations, application history, outcome log, and some details about recruiters and companies. It stays on your computer: its `.gitignore` ignores everything by default. **Don't commit or publish it.**
+
+What leaves your machine:
+- **Your AI assistant** (e.g. Claude) reads the workspace files you work on, so they are processed by its provider under that provider's terms. Don't put anything in the workspace you wouldn't share with it.
+- **Job boards** get your search terms (derived from your profile), and Remote Rocketship gets them only if you add your own API key.
+- **Company checks** send company names and domains to rdap.org, dns.google (so Google sees which domains you look up), api.gleif.org and brasilapi.com.br (only when you give a CNPJ).
+- **Offer comparison and the filter** send currency codes to frankfurter.app.
+- **Posting URLs** you pass to `ats_check.py` are fetched from that site.
+- Your name, CV, contact details and salary are never sent by the scripts.
+
+**Other people's data.** List referees in a CV only with their consent, write roles rather than names in the outcome log, and use `outcomes.py redact "Name"` if someone asks to be removed.
+
+**For personal use.** A job search you run for yourself is private use, largely outside the GDPR (art. 2(2)(c)) and the LGPD (art. 4, I). If you use the skill for other people, e.g. as a career coach, you are the data controller for their data and those laws apply in full.
+
+### Delete your data
+- Everything: delete the workspace folder (e.g. `rm -rf ~/JobHunt`).
+- One person: `python3 skill/job-hunt/scripts/outcomes.py --workspace ~/JobHunt redact "Name" "email@example.com"`, and remove them from `interview/*.md`.
+- Caches: `search/cache/` and `search/company-cache.json` in the workspace. With Remote Rocketship: `~/.config/remoterocketship/`.
 
 ## Sources and terms
 
-Only public APIs and RSS feeds are used, including the public job-board APIs of Greenhouse, Ashby, Lever and Workable for the companies you list. LinkedIn, Indeed, Glassdoor and Wellfound are intentionally not scraped: search those manually. Remote Rocketship needs your own API key (`~/.config/remoterocketship/api-key`). Job-board endpoints change, so the notes are in `templates/search/sources.md` and PRs are welcome.
+Every report shows each job's source and original link: RemoteOK, Remotive and Jobicy require that attribution. Job data is for your personal search only, so don't republish it. Remotive asks for at most 4 API requests a day, so `scan.py` fetches its feed once and caches it for 6 hours. Only public APIs and RSS feeds are used, including the public job-board APIs of Greenhouse, Ashby, Lever and Workable for the companies you list. LinkedIn, Indeed, Glassdoor and Wellfound are intentionally not scraped: search those manually. Remote Rocketship needs your own API key (`~/.config/remoterocketship/api-key`). Job-board endpoints change, so the notes are in `templates/search/sources.md` and PRs are welcome.
 
 ## Tests
 
