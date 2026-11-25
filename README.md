@@ -6,6 +6,8 @@ A [Claude Code](https://claude.com/claude-code) skill that runs your job search 
 
 - **Scans 11 public job boards** (RemoteOK, Remotive, Himalayas, Jobicy, We Work Remotely, Working Nomads, HN "Who is hiring", Arbeitnow, GetOnBoard, Gupy, and optionally Remote Rocketship).
 - **Watches companies' own job boards** (Greenhouse, Ashby, Lever, Workable) for the companies you list, so you see openings the day they are posted. `--probe-ats` finds each company's board.
+- **Answers "can they hire me, and what will I take home?"** Each job gets an eligibility verdict that tells *residence* apart from *right to work* (a passport isn't an address), detects the contract type (local payroll, PJ, contractor, employer of record) and time-zone overlap, and estimates **net monthly pay** per contract. Brazil (CLT, PJ, export of services) is the first country module; other countries use your own flat rates.
+- **Checks whether a company is real:** domain age, mail setup, website, public job board, recruiter email, LEI and the Brazilian CNPJ registry, combined into an explainable trust score. It never says "safe".
 - **Filters out the noise** most job tools ignore:
   - "remote" jobs that only hire in another country
   - ghost jobs (stale, reposted, talent pools)
@@ -68,6 +70,8 @@ After that:
 | "Mock my AI interview for X" | Likely questions one at a time, each answer scored against the AI-interview rules |
 | "Also watch Acme and Globex" | Finds their job boards (`--probe-ats`) and adds them to the scan |
 | "How is my search going?" | Funnel (`stats`) and whether the fit score predicts interviews (`calibrate`) |
+| "Is Acme legit? The recruiter wrote from gmail" | `verify_company.py`: trust score, reasons and next steps |
+| "Compare this CLT offer with that USD contract" | `netpay.py`: net monthly pay for each, with assumptions |
 | "Only show EU jobs above €4k" | Rules + filters updated, change logged |
 
 Scripts also run on their own:
@@ -77,6 +81,8 @@ python3 skill/job-hunt/scripts/scan.py   --workspace ~/JobHunt
 python3 skill/job-hunt/scripts/filter.py --workspace ~/JobHunt     # also logs filter decisions
 python3 skill/job-hunt/scripts/scan.py   --workspace ~/JobHunt --probe-ats acme,globex
 python3 skill/job-hunt/scripts/outcomes.py --workspace ~/JobHunt stats       # or: calibrate
+python3 skill/job-hunt/scripts/netpay.py   --workspace ~/JobHunt --gross 25000 --contract employee_local
+python3 skill/job-hunt/scripts/verify_company.py --workspace ~/JobHunt --company Acme --domain acme.com
 ```
 
 ## Configuration
@@ -85,7 +91,7 @@ All tuning lives in `search/filters.md` in your workspace (see its field guide):
 
 ## Privacy
 
-Your workspace contains your CV, salary expectations, application history and outcome log. The workspace `.gitignore` ignores everything by default. **Don't commit it.** The scripts only call public job-board APIs and an FX-rate API (frankfurter.app). Nothing about you is sent anywhere.
+Your workspace contains your CV, salary expectations, application history and outcome log. The workspace `.gitignore` ignores everything by default. **Don't commit it.** The scripts only call public job-board APIs, an FX-rate API (frankfurter.app) and, for company checks, public registries and DNS (rdap.org, dns.google, api.gleif.org, brasilapi.com.br). Only company names and domains are sent. Nothing about you is sent anywhere.
 
 ## Sources and terms
 
@@ -94,7 +100,7 @@ Only public APIs and RSS feeds are used, including the public job-board APIs of 
 ## Tests
 
 ```bash
-python3 -m unittest discover -s tests -v    # offline: filters, outcome log, calibration, job-board parsers
+python3 -m unittest discover -s tests -v    # offline: filters, outcome log, calibration, job-board parsers, net pay, eligibility, company check
 ```
 
 ## License

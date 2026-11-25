@@ -6,6 +6,7 @@ Last confirmed: {{today}}
 - Based in {{homeCity}}, {{homeCountry}}. Remote only: {{remoteOnly}}. Hybrid OK in: {{hybridOkCities}}.
 - Employer must be able to hire someone living in {{homeCountry}}. Allowed regions: {{allowedRegions}}, or worldwide.
 - Remote jobs restricted to other countries/regions are out.
+- Citizenship is not residence: a passport gives the right to work somewhere, but a job that requires living there means relocating. Details are in `search/filters.md` → `person`.
 
 ## Role
 - Target: {{targetRoles}} ({{seniority}}).

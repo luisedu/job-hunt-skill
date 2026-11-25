@@ -48,6 +48,16 @@ Trigger: no `CLAUDE.md` + `search/filters.md` in the chosen folder.
 - Quick checks may use the Remote Rocketship API if the user has a key (`sources.remoterocketship`).
 - **Company job boards** (`ats` source): suggest 10–30 companies that do the user's kind of work, find their slugs with `scan.py --workspace <ws> --probe-ats a,b,c`, and add the ones found to `filters.md` → `atsBoards`. This catches openings the day they're posted, before the aggregators pick them up.
 
+### Eligibility and net pay
+- `filter.py` gives every job an **eligibility** verdict (`eligible`, `likely`, `unclear`, `relocation`, `no`) with reasons, from `filters.md` → `person`. It tells residence requirements ("must reside in") apart from the right to work ("authorized to work in"). A passport satisfies the second, not the first. It also detects the contract type (local payroll, PJ, contractor, employer of record, foreign payroll) and the time-zone overlap. This is advisory: say "relocation" or "unclear" plainly, and don't hide such jobs.
+- When the pay is listed, `filter.py` also estimates **net monthly pay** for the plausible contracts (`pay_net`). Country rules live in `scripts/netpay/<CC>.json`, with sources and a validity date. Other countries use the flat `netRates`. To compare offers directly: `python3 SKILL_DIR/scripts/netpay.py --workspace <ws> --gross 25000 --contract employee_local` (add `--rate` for contractor monthly rates).
+- Always present net figures as estimates, not tax advice, together with their main assumptions. If a module's validity date has passed, say the tables need updating.
+
+### Company check
+- Run `python3 SKILL_DIR/scripts/verify_company.py --workspace <ws> --results <results.json>` on kept jobs before recommending them. For an inbound recruiter, use `--company X --domain x.com --email recruiter@x.com` (add `--cnpj` for Brazilian companies).
+- It scores public signals (domain age, mail setup, website, public job board, recruiter email, LEI, registry) into `ok` / `caution` / `high-risk`, or `unverified` when the company's website is unknown or only guessed. For `unverified`, find the real website (from the posting or a search) and re-run with `--domain`.
+- Never call a company safe. For `caution` or `high-risk`, show the reasons and the next steps: ask for the legal entity and registration number, and share nothing sensitive before a signed contract.
+
 ## 4. Tailoring documents
 1. Read the posting and map each requirement to evidence in `profile.md`. Note gaps and ask before claiming anything new. Record confirmed facts in `profile.md` → "Confirmed in conversation".
 2. Copy `SKILL_DIR/assets/cv.html` / `letter.html` into the session scratchpad (never into the workspace). Fill them in the posting's language and order skills by the posting's keywords. **Never drop sections such as References without asking.**

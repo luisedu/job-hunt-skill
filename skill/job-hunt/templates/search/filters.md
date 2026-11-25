@@ -18,6 +18,9 @@ The skill scripts read the JSON block below. Edit values here. Hard rules live i
 - `fit`: regex → weight, for ranking. `penalizeKeywords`: −2 each.
 - `excludedRoles`: `[{"company": "…", "title": "…"}]` drops one role (and its reposts) without excluding the whole company. Titles are compared without seniority words, so "Senior X" also drops a repost titled "X".
 - `atsBoards`: company job boards to scan directly, by system: `{"greenhouse": [...], "ashby": [...], "lever": [...], "workable": [...]}`. Find slugs with `scan.py --probe-ats name1,name2`.
+- `person`: where you live (`residence`, ISO code), `citizenships`, `workPermits`, `timezone` (e.g. `America/Sao_Paulo`), `minOverlapHours`, the `contracts` you accept (`employee_local`, `pj_local`, `contractor`, `eor`), and how to estimate net pay: `netModel` (a country module in the skill, e.g. `BR`) or flat `netRates` (`{"employee": 0.75, "contractor": 0.85}`), plus `contractorBillableMonths` (11 = one unpaid month a year).
+- `pay.unlisted`: jobs with no salary listed: `flag` (default: keep them, with a flag), `keep` (keep, no flag) or `hide` (exclude them; a duplicate on another board that lists pay brings the job back).
+- `pay.floorBasis`: `gross` (default) or `net`, which compares the floor with the estimated take-home pay.
 - `sources`: turn boards on/off (see `search/sources.md`). `gupyTerms`: Portuguese terms for Gupy (Brazil).
 
 ## Tuning log

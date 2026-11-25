@@ -30,7 +30,8 @@ FILTER_CODES = [  # (regex on filter.py reason text, code)
     (r"stale", "stale"),
     (r"talent pool", "talent_pool"),
     (r"^reposted", "repost"),
-    (r"pay max", "pay_below_floor"),
+    (r"(pay|net) max", "pay_below_floor"),
+    (r"salary not listed", "salary_unlisted"),
     (r"company excluded", "company_excluded"),
     (r"role excluded", "role_excluded"),
 ]
@@ -96,6 +97,7 @@ def features(j, cfg):
         "age_days": j.get("age_days"), "salary_listed": bool(j.get("pay_monthly")), "pay_monthly": j.get("pay_monthly"),
         "seniority": seniority, "skills": skills, "scam_flag": any("SCAM" in f for f in j.get("flags", [])),
         "fit": j.get("fit"), "url": (j.get("urls") or [j.get("url")])[0],
+        "contract": j.get("contract"), "eligibility": j.get("eligibility"), "pay_net": j.get("pay_net"),
     }
 
 

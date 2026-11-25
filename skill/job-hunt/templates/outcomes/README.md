@@ -31,7 +31,7 @@
 | `checkin` | `30d`, `90d`, `180d`, `365d`, `left` | after a hire: did the job match the posting, and are you staying? |
 
 ## Reason codes
-- **filter** (automatic): `location_restricted`, `location_unstated`, `onsite`, `stale`, `talent_pool`, `repost`, `pay_below_floor`, `company_excluded`, `role_excluded`, `other`
+- **filter** (automatic): `location_restricted`, `location_unstated`, `onsite`, `stale`, `talent_pool`, `repost`, `pay_below_floor`, `salary_unlisted`, `company_excluded`, `role_excluded`, `other`
 - **decision** (yours), for example: `pay_below_floor_user`, `level`, `location`, `wrong_role`, `company_reputation`, `scam`, `low_fit`, `inbound`, `other`
 - **stage end**, for example: `interview_score`, `no_reply`, `pay_mismatch`, `location_mismatch`, `role_mismatch`, `withdrew_better_offer`, `other`
 
@@ -42,6 +42,9 @@ Add new codes freely, but list them here.
 - **application:** `channel` (`greenhouse`, `ashby`, `lever`, `linkedin`, `referral`, `inbound-recruiter`…), `docs` (language), `contract`, `ask`
 - **offer / hire:** `pay`, `currency`, `contract`, `start`
 - **checkin:** `satisfaction` (1–5), `role_matches_posting` (1–5), `would_stay` (y/n), `issues`
+
+## Features (filter events)
+`sources`, `region`, `loc`, `age_days`, `salary_listed`, `pay_monthly`, `seniority`, `skills`, `scam_flag`, `fit`, `url`, plus `contract`, `eligibility` and `pay_net` (estimated net monthly range).
 
 ## Privacy
 Personal data. Never publish it. Any future sharing must be opt-in and anonymized (drop company names, notes and URLs; keep codes and features).
