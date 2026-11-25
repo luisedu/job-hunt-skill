@@ -62,6 +62,14 @@ Trigger: no `CLAUDE.md` + `search/filters.md` in the chosen folder.
 1. Read the posting and map each requirement to evidence in `profile.md`. Note gaps and ask before claiming anything new. Record confirmed facts in `profile.md` → "Confirmed in conversation".
 2. Copy `SKILL_DIR/assets/cv.html` / `letter.html` into the session scratchpad (never into the workspace). Fill them in the posting's language and order skills by the posting's keywords. **Never drop sections such as References without asking.**
 3. Convert: `soffice --headless --convert-to pdf:writer_web_pdf_Export --outdir <ws>/<company> file.html`. Check `pdfinfo` pages (CV ≤ 2, letter 1) and a preview (`pdftoppm -r 50 -png`).
+   Then run the ATS check: `python3 SKILL_DIR/scripts/ats_check.py --cv <pdf> --posting <posting.txt|URL> --title "<posted title>" --workspace <ws>`.
+   - Fix every ❌ and ⚠ in parsing.
+   - Add the "missing but true" terms where they fit naturally.
+   - For "related evidence", describe what the user actually did. Use the posting's words only if they're accurate (Kalman filter → state estimation is fine).
+   - "Not in profile" and "Do NOT claim" terms never go in the CV: prepare honest interview answers instead.
+   - Echo the posting's title in the headline only if it's truthful.
+   - Go over the screening topics with the user before they apply: location, work authorisation, salary, years of experience. Most automatic rejections happen there.
+   - Never add hidden text or keyword lists.
 4. **Only PDFs go in `<ws>/<company>/`.** Put paste-ready letter text in chat, and check ATS character limits if given.
 5. Add or update the row in `applications.md` (`prepared`). Set it to `submitted` when the user confirms.
 

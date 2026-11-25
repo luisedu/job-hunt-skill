@@ -15,7 +15,8 @@ ul { margin: 1px 0 3px 0; padding-left: 16px; }
 li { margin: 1px 0; text-align: justify; }
 table.hdr { border-collapse: collapse; margin-top: 5px; }
 table.hdr td { padding: 0; font-size: 9.5pt; }
-.meta { font-style: italic; color: #555; font-size: 9pt; margin: 0; }
+.meta { font-style: italic; color: #555; font-size: 9pt; margin: 0; page-break-after: avoid; }
+table.hdr, h2 { page-break-after: avoid; }  /* keep a role's title with its first bullets */
 .ref { margin: 1px 0; font-size: 9pt; }
 </style></head><body>
 <h1>{{NAME}}</h1>

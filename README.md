@@ -18,6 +18,12 @@ A [Claude Code](https://claude.com/claude-code) skill that runs your job search 
 - **Flags likely scams:** free-mail recruiters, fees, Telegram/WhatsApp-only contact, implausible pay, unnamed companies.
 - **Ranks by fit** against your profile, then Claude vets every job by reading it.
 - **Tailors CV and cover-letter PDFs** using only facts from your CV, with a "do not claim" list to keep it honest.
+- **Checks each CV the way an ATS reads it:**
+  - parsing: selectable text, contact details, headings, dates, glued lines, fonts
+  - the posting's keywords, split into already in the CV / missing but true / not yours
+  - title match with the posting
+  - the screening questions where most automatic rejections happen
+  It never suggests hidden text or claiming skills you don't have.
 - **Tracks applications** and asks you, now and then, whether you've heard back.
 - **Logs outcomes** in an append-only event log: every filter decision, every skip (with your reason), every stage, and check-ins at 30/90/180/365 days after a hire. It saves each posting when you apply, so you can later check whether the job matched what was advertised.
 - **Learns carefully:** a correction becomes a rule only after you approve it (your words are stored verbatim). `calibrate` checks whether the fit score predicts interviews, and shows "n too small" instead of a fake percentage.
@@ -74,6 +80,7 @@ After that:
 | "How is my search going?" | Funnel (`stats`) and whether the fit score predicts interviews (`calibrate`) |
 | "Is Acme legit? The recruiter wrote from gmail" | `verify_company.py`: trust score, reasons and next steps |
 | "Compare this CLT offer with that USD contract" | `netpay.py`: net monthly pay for each, with assumptions |
+| "Will my CV pass the ATS for <link>?" | `ats_check.py`: parsing problems, keyword gaps (only true ones to add), title, screening questions |
 | "Compare my offers" | `offers.py`: net, benefits, currency scenarios, local-salary equivalent |
 | "Which companies hire from my country?" | `insights.py employers --suggest-ats` |
 | "What should I learn next?" | `insights.py skills`: gaps across every relevant job, and pay linked to skills |
@@ -91,6 +98,7 @@ python3 skill/job-hunt/scripts/netpay.py   --workspace ~/JobHunt --gross 25000 -
 python3 skill/job-hunt/scripts/verify_company.py --workspace ~/JobHunt --company Acme --domain acme.com
 python3 skill/job-hunt/scripts/insights.py --workspace ~/JobHunt weekly        # or: employers, companies, skills
 python3 skill/job-hunt/scripts/offers.py   --workspace ~/JobHunt               # reads interview/offers.json
+python3 skill/job-hunt/scripts/ats_check.py --cv CV.pdf --posting posting.txt --workspace ~/JobHunt
 ```
 
 ## Configuration
@@ -108,7 +116,7 @@ Only public APIs and RSS feeds are used, including the public job-board APIs of 
 ## Tests
 
 ```bash
-python3 -m unittest discover -s tests -v    # offline: filters, outcome log, calibration, job-board parsers, net pay, eligibility, company check, insights, offers
+python3 -m unittest discover -s tests -v    # offline: filters, outcome log, calibration, job-board parsers, net pay, eligibility, company check, insights, offers, ATS check
 ```
 
 ## License

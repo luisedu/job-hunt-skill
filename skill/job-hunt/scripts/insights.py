@@ -29,6 +29,9 @@ VOCAB = {  # generic tech vocabulary; users add their own via filters.md -> skil
                "anomaly detection", "edge", "embedded", "jetson", "sensor fusion", "kalman"],
     "data": ["pandas", "numpy", "spark", "airflow", "dbt", "kafka", "postgresql", "mysql", "mongodb", "redis", "elasticsearch", "bigquery", "snowflake", "databricks"],
     "cloud": ["aws", "gcp", "azure", "sagemaker", "lambda", "s3", "docker", "kubernetes", "terraform", "ci/cd", "linux", "git", "grpc", "rest api", "fastapi", "flask"],
+    "systems": ["backend", "microservices", "distributed systems", "data pipelines", "real-time", "streaming", "low latency", "signal processing",
+                "state estimation", "numerical methods", "robotics", "ros", "depth camera", "pose estimation", "ml infrastructure", "model deployment",
+                "inference", "profiling", "multithreading", "concurrency", "embedded linux", "fpga"],
     "web_mobile": ["react", "next.js", "vue", "angular", "node.js", "django", "ios", "android", "flutter", "react native", "graphql"],
 }
 
