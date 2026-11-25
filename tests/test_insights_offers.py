@@ -87,6 +87,23 @@ class Skills(Base):
         self.assertTrue({"python", "pytorch", "docker"} <= have)
         self.assertIsNotNone({x["skill"]: x for x in r["pay_linked"]}.get("docker"))  # 6 vs 6 jobs with pay
 
+    def test_short_language_names_need_context(self):
+        go, r = I.term_re("go"), I.term_re("r")
+        for txt in ("Python, Go and Rust", "Backend in Go (Golang)", "golang services", "Go/Rust/C++ experience"):
+            self.assertTrue(go.search(txt), txt)
+        for txt in ("We go live next month", "go-to-market team", "ready to go", "Go ahead with Python"):
+            self.assertFalse(go.search(txt), txt)
+        for txt in ("Python, R, SQL", "R or Python for statistics", "RStudio"):
+            self.assertTrue(r.search(txt), txt)
+        for txt in ("Salário R$ 20.000", "R&D team in Python", "R $ 15.000 com Python", "Team R & D Python"):
+            self.assertFalse(r.search(txt), txt)
+
+    def test_profile_salary_is_not_the_r_language(self):
+        open(os.path.join(self.ws, "curriculum", "profile.md"), "w").write("# Profile\nPython, SQL. Pay floor R$ 20.000 per month.\n")
+        self.results("2026-06-20", [R("C1", "Data Scientist", text="Python, R, SQL")])
+        gaps = {x["skill"]: x["status"] for x in I.skills(self.ws, self.cfg)["gaps"]}
+        self.assertEqual(gaps.get("r"), "gap")
+
     def test_pay_withheld_when_small(self):
         self.results("2026-06-20", [R("C1", "Engineer", text="Rust", pay=(1, 2)), R("C2", "Engineer", text="Go", pay=(1, 2))])
         self.assertEqual(I.skills(self.ws, self.cfg)["pay_linked"], [])

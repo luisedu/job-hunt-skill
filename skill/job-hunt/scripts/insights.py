@@ -20,7 +20,7 @@ NOT_HIRING_HERE = re.compile(r"onsite|not remote|restricted|company excluded|rol
 REPLY = {"screening", "interview", "offer", "hired", "rejected"}
 ENDED = {"rejected", "ghosted", "withdrawn", "offer", "hired"}
 VOCAB = {  # generic tech vocabulary; users add their own via filters.md -> skills.extra
-    "languages": ["python", "c++", "c#", "java", "kotlin", "swift", "golang", "rust", "javascript", "typescript", "scala", "matlab", "sql", "bash", "cuda"],
+    "languages": ["python", "c++", "c#", "java", "kotlin", "swift", "go", "r", "rust", "javascript", "typescript", "scala", "matlab", "sql", "bash", "cuda"],
     "ml": ["pytorch", "tensorflow", "keras", "jax", "scikit-learn", "xgboost", "hugging face", "transformers", "onnx", "tensorrt", "openvino", "tflite",
            "quantization", "distillation", "mlflow", "weights & biases", "kubeflow", "dvc", "ray", "triton", "vllm", "llm", "rag", "langchain",
            "reinforcement learning", "diffusion", "vlm", "multimodal", "foundation model", "fine-tuning", "mlops"],
@@ -168,8 +168,36 @@ def companies(ws, only=None, show_all=False):
 
 
 # ------------------------------------------------------------------ skills
+LANG_CONTEXT = re.compile(r"python|java\b|rust|c\+\+|c#|kotlin|typescript|javascript|scala|ruby|php|elixir|swift|node|sql|"
+                          r"matlab|julia|sas\b|stata|pandas|statistic|tidyverse|ggplot|shiny|programming|language", re.I)
+
+
+class InContext:
+    """Case-sensitive match of a short language name, accepted only near other languages/tools.
+    Avoids "R$ 20.000", "R&D", "go live", "go-to-market", "ready to go"."""
+
+    def __init__(self, pattern, alias=None, window=40):
+        self.rx, self.alias, self.window = re.compile(pattern), re.compile(alias, re.I) if alias else None, window
+
+    def search(self, text):
+        if self.alias and self.alias.search(text):
+            return True
+        for m in self.rx.finditer(text):
+            context = text[max(0, m.start() - self.window):m.start()] + " " + text[m.end():m.end() + self.window]
+            if LANG_CONTEXT.search(context):
+                return True
+        return False
+
+
+SPECIAL = {
+    "go": InContext(r"(?<![\w-])Go(?![\w-]|\s+(?:live|to|ahead|beyond|back)\b)", alias=r"\bgolang\b|\bgo (?:lang|programming)\b"),
+    "r": InContext(r"(?<![\w$&-])R(?![\w$&\-.]|\s*\$|\s*&)", alias=r"\bR (?:language|programming|studio)\b|\bRStudio\b|\btidyverse\b"),
+}
+
+
 def term_re(t):
-    return re.compile(r"(?<![a-z0-9+#])" + re.escape(t.lower()) + r"(?![a-z0-9+#])")
+    t = t.lower()
+    return SPECIAL.get(t) or re.compile(r"(?<![a-z0-9+#])" + re.escape(t) + r"(?![a-z0-9+#])", re.I)
 
 
 def profile_terms(ws):
@@ -177,8 +205,8 @@ def profile_terms(ws):
     p = os.path.join(ws, "curriculum", "profile.md")
     if not os.path.exists(p):
         return "", ""
-    md = open(p, encoding="utf-8").read().lower()
-    m = re.search(r"^#+\s*do not claim.*?$(.*?)(?=^#+\s|\Z)", md, re.M | re.S)
+    md = open(p, encoding="utf-8").read()
+    m = re.search(r"^#+\s*do not claim.*?$(.*?)(?=^#+\s|\Z)", md, re.M | re.S | re.I)
     if not m:
         return md, ""
     return md[:m.start()] + md[m.end():], m.group(1)
@@ -189,7 +217,7 @@ def skills(ws, cfg, top=25):
     vocab = sorted({t.lower() for ts in VOCAB.values() for t in ts} | {t.lower() for t in cfg["roles"]["textKeywords"] + cfg["roles"]["titleKeywords"]}
                    | {t.lower() for t in (cfg.get("skills") or {}).get("extra", [])} | {k.lower() for k in cfg["fit"] if re.fullmatch(r"[\w .+#-]+", k)})
     have, dnc = profile_terms(ws)
-    texts = [((j["title"] + " " + j.get("text", "")).lower(), gross(j)) for j in jobs]
+    texts = [(j["title"] + " " + j.get("text", ""), gross(j)) for j in jobs]
     n = len(texts)
     out = []
     for t in vocab:
