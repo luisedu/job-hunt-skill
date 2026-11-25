@@ -4,8 +4,9 @@
 Usage:
     python3 scan.py --workspace PATH            # all enabled sources
     python3 scan.py --workspace PATH --only remotive,himalayas
+    python3 scan.py --workspace PATH --probe-ats roboflow,mapbox   # find company job-board slugs
 
-Reads  PATH/search/filters.md  (JSON block: "queries", "sources", "gupyTerms", "remoteRocketship")
+Reads  PATH/search/filters.md  (JSON block: "queries", "sources", "gupyTerms", "remoteRocketship", "atsBoards")
 Writes PATH/search/scans/raw-YYYY-MM-DD.json  (list of normalized jobs)
 
 Normalized job: {source, sid, title, company, loc, url, text, posted (ISO-8601 UTC), sal, extra}
@@ -230,6 +231,83 @@ def src_hn(cfg):
     return out
 
 
+ATS_APIS = {
+    "greenhouse": "https://boards-api.greenhouse.io/v1/boards/{}/jobs?content=true",
+    "ashby": "https://api.ashbyhq.com/posting-api/job-board/{}?includeCompensation=true",
+    "lever": "https://api.lever.co/v0/postings/{}?mode=json",
+    "workable": "https://apply.workable.com/api/v1/widget/accounts/{}?details=true",
+}
+
+
+def ats_title_re(cfg):
+    words = cfg["roles"]["titleKeywords"] + [w for q in cfg["queries"] for w in q.split() if len(w) > 3]
+    return re.compile("|".join(re.escape(w) for w in words if w) or r"$^", re.I)
+
+
+def ats_board(kind, slug, title_re):
+    """One company's public job board. Keeps titles that match the target keywords."""
+    d = getj(ATS_APIS[kind].format(slug))
+    out = []
+    if kind == "greenhouse":
+        for j in (d or {}).get("jobs") or []:
+            if title_re.search(j.get("title") or ""):
+                out.append(job("ATS:greenhouse", f"{slug}-{j.get('id')}", j.get("title"), j.get("company_name") or slug,
+                               (j.get("location") or {}).get("name"), j.get("absolute_url"), html.unescape(j.get("content") or ""),
+                               pdate(j.get("first_published") or j.get("updated_at"))))
+    elif kind == "ashby":
+        for j in (d or {}).get("jobs") or []:
+            if not title_re.search(j.get("title") or ""):
+                continue
+            wt = j.get("workplaceType") or ("Remote" if j.get("isRemote") else "")  # isRemote is also true for Hybrid jobs
+            locs = [j.get("location") or ""] + [x.get("location", "") for x in j.get("secondaryLocations") or []]
+            comp = (j.get("compensation") or {}).get("compensationTierSummary")
+            out.append(job("ATS:ashby", f"{slug}-{j.get('id')}", j.get("title"), slug, f"{wt} " + "; ".join(x for x in locs if x),
+                           j.get("jobUrl"), (j.get("descriptionPlain") or "") + (f" Compensation: {comp}" if comp else ""),
+                           pdate(j.get("publishedAt"))))
+    elif kind == "lever":
+        for j in d if isinstance(d, list) else []:
+            if not title_re.search(j.get("text") or ""):
+                continue
+            c = j.get("categories") or {}
+            sr = j.get("salaryRange") or None
+            sal = dict(min=sr.get("min"), max=sr.get("max"), cur=sr.get("currency"), per=str(sr.get("interval") or "").replace("per-", "")) if sr else None
+            text = " ".join(str(j.get(k) or "") for k in ("descriptionPlain", "additionalPlain")) + " " + " ".join(strip(x.get("content")) for x in j.get("lists") or [])
+            out.append(job("ATS:lever", f"{slug}-{j.get('id')}", j.get("text"), slug,
+                           f"{j.get('workplaceType') or ''} {c.get('location') or ''} {' '.join(c.get('allLocations') or [])}",
+                           j.get("hostedUrl"), text, pdate(j["createdAt"] // 1000) if j.get("createdAt") else None, sal))
+    elif kind == "workable":
+        for j in (d or {}).get("jobs") or []:
+            if title_re.search(j.get("title") or ""):
+                loc = ("remote " if j.get("telecommuting") else "") + ", ".join(x for x in (j.get("city"), j.get("state"), j.get("country")) if x)
+                out.append(job("ATS:workable", f"{slug}-{j.get('shortcode')}", j.get("title"), d.get("name") or slug, loc,
+                               j.get("url") or j.get("shortlink"), j.get("description") or "", pdate(j.get("published_on") or j.get("created_at"))))
+    return out
+
+
+def src_ats(cfg):
+    """Companies' own job boards (Greenhouse, Ashby, Lever, Workable) listed in filters.md -> atsBoards.
+    Catches openings before the aggregators do. Find a company's slug with: scan.py --probe-ats name1,name2"""
+    title_re = ats_title_re(cfg)
+    pairs = [(k, s) for k, slugs in cfg["atsBoards"].items() if k in ATS_APIS for s in slugs]
+    out = []
+    with ThreadPoolExecutor(8) as ex:
+        for r in ex.map(lambda p: ats_board(p[0], p[1], title_re), pairs):
+            out += r
+    return out
+
+
+def probe_ats(slugs):
+    """Which job-board systems answer for these company slugs, and how many jobs each lists."""
+    for s in slugs:
+        hits = []
+        for kind, url in ATS_APIS.items():
+            d = getj(url.format(s), timeout=20)
+            n = len(d) if isinstance(d, list) else len((d or {}).get("jobs") or []) if isinstance(d, dict) and "jobs" in d else None
+            if n:  # an empty board looks the same as a missing one on some systems
+                hits.append(f"{kind} ({n} jobs)")
+        print(f"{s}: {', '.join(hits) or 'not found (try another slug: name, name-ai, namehq…)'}")
+
+
 SOURCES = {name[4:]: fn for name, fn in list(globals().items()) if name.startswith("src_")}
 
 
@@ -237,7 +315,10 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--workspace", required=True)
     ap.add_argument("--only", help="comma-separated source names: " + ",".join(SOURCES))
+    ap.add_argument("--probe-ats", help="comma-separated company slugs: find which job-board system each uses, then exit")
     a = ap.parse_args()
+    if a.probe_ats:
+        return probe_ats([x.strip() for x in a.probe_ats.split(",") if x.strip()])
     ws = os.path.abspath(os.path.expanduser(a.workspace))
     cfg = load_config(ws)
     enabled = [s for s, on in cfg["sources"].items() if on and s in SOURCES]

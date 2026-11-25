@@ -188,6 +188,9 @@ def classify(j, cfg, R, fx, today):
     co = j["company"].lower()
     if co and any(c.lower() in co for c in cfg["excludedCompanies"] if c):
         reasons.append("company excluded")
+    if co and any(r.get("company", "").lower() in co and norm_title(r.get("title", "")) == norm_title(j["title"])
+                  for r in cfg["excludedRoles"]):
+        reasons.append("role excluded")
     if co and R["applied"] and any(a and a.split()[0] in co.split()[:2] for a in R["applied"]):
         flags.append("ALREADY APPLIED / in pipeline")
 
@@ -302,6 +305,11 @@ def main():
             print("   flags:", "; ".join(j["flags"]))
         print("  ", j["urls"][0] if j["urls"] else "")
     print("\nsaved", r["path"])
+    try:  # structured outcome log (outcomes/outcomes.jsonl); never fail the scan because of it
+        import outcomes
+        print("outcomes: logged", outcomes.log_scan(os.path.abspath(os.path.expanduser(a.workspace)), r["path"]), "filter events")
+    except Exception as e:
+        print("outcomes: log failed:", e, file=sys.stderr)
 
 
 if __name__ == "__main__":

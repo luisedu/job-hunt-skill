@@ -11,6 +11,13 @@ Only facts from `curriculum/profile.md` or confirmed by the candidate. 60–90 s
 6. Working with stakeholders / remote teams
 7. Why this company?
 
+## Numbers bank
+Confirmed numbers only (from `curriculum/profile.md`). One line each: baseline → result, scale, quality target. Interviewers and AI graders ask for comparisons.
+
+| What | Baseline → result | Context |
+|---|---|---|
+| _(e.g. latency)_ | _(before → after)_ | _(how, where)_ |
+
 ## Stories
 _(write each story under a heading, in the language(s) needed)_
 

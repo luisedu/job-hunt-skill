@@ -1,6 +1,6 @@
 ---
 name: job-hunt
-description: Run a personal job search from a local workspace. Scan 10+ public job boards, filter out ghost jobs, reposts, location-restricted remote roles, below-floor pay and scams, rank by fit against the user's CV, tailor CV and cover-letter PDFs, prep interviews, and track applications with periodic follow-up questions. Use when the user wants to set up a job hunt, find jobs, check for new jobs, tailor a CV or cover letter, prep an interview, or update application status.
+description: Run a personal job search from a local workspace. Scan 10+ public job boards and companies' own job boards, filter out ghost jobs, reposts, location-restricted remote roles, below-floor pay and scams, rank by fit against the user's CV, tailor CV and cover-letter PDFs, prep interviews (including AI-scored ones), and track applications and outcomes (funnel, calibration, retention check-ins) with periodic follow-up questions. Use when the user wants to set up a job hunt, find jobs, check for new jobs, tailor a CV or cover letter, prep an interview, or update application status.
 ---
 
 # Job hunt
@@ -46,6 +46,7 @@ Trigger: no `CLAUDE.md` + `search/filters.md` in the chosen folder.
 - **Report:** counts (raw → relevant → kept → vetted), exclusions grouped by reason, then the jobs best fit first. For each: title, company, location rule, pay or "not listed", age, why it fits, flags, apply link. Mention notable jobs dropped only for repost/age, so the user can override.
 - Append a dated entry to `search/scan-log.md`. Add good unapplied jobs to "Candidates found" in `applications.md`.
 - Quick checks may use the Remote Rocketship API if the user has a key (`sources.remoterocketship`).
+- **Company job boards** (`ats` source): suggest 10–30 companies that do the user's kind of work, find their slugs with `scan.py --workspace <ws> --probe-ats a,b,c`, and add the ones found to `filters.md` → `atsBoards`. This catches openings the day they're posted, before the aggregators pick them up.
 
 ## 4. Tailoring documents
 1. Read the posting and map each requirement to evidence in `profile.md`. Note gaps and ask before claiming anything new. Record confirmed facts in `profile.md` → "Confirmed in conversation".
@@ -55,11 +56,26 @@ Trigger: no `CLAUDE.md` + `search/filters.md` in the chosen folder.
 5. Add or update the row in `applications.md` (`prepared`). Set it to `submitted` when the user confirms.
 
 ## 5. Interviews and offers
+- **AI-scored or async interviews** (audio bots, one-way video): follow `interview/ai-interviews.md`. Offer a mock first: ask the likely questions one at a time and score each answer against its rules.
+- Keep a **numbers bank** in `interview/stories.md`: confirmed baseline → result figures. Interviewers, and especially bots, ask for comparisons. Never invent a number: ask the user, and record what they confirm in `profile.md`.
 - Create `interview/<company>.md` from `templates/interview/_company-template.md`: company facts with sources, role → evidence map, gaps and honest answers, questions to ask, pay plan.
 - Build reusable stories in `interview/stories.md` from what the user tells you (confirmed facts only).
 - Pay: convert everything to the user's monthly currency. Compare to the floor and target in `memory.md`. Suggest letting the employer name the number first, and quoting a stated hours basis for contractor rates.
 
-## 6. Tuning
+## 6. Outcome log and learning
+Every change to `applications.md` also gets an event in `outcomes/outcomes.jsonl` (`scripts/outcomes.py`; schema in the workspace's `outcomes/README.md`). `filter.py` logs scan decisions automatically.
+```bash
+python3 SKILL_DIR/scripts/outcomes.py --workspace <ws> event --company C --title T --event decision --value applied --data '{"channel": "greenhouse"}'
+python3 SKILL_DIR/scripts/outcomes.py --workspace <ws> event --company C --title T --event stage --value interview --data '{"format": "video-call", "round": 1}'
+python3 SKILL_DIR/scripts/outcomes.py --workspace <ws> stats       # funnel
+python3 SKILL_DIR/scripts/outcomes.py --workspace <ws> calibrate   # does the fit score predict interviews? (advisory)
+```
+- **Skips are the most useful labels.** When the user passes on a kept job, log `decision skipped` with a reason code, and ask why if it isn't clear.
+- **A single skip is not a rule.** Don't turn one case into a filter. If a correction sounds general, ask: "Should this apply to all X, or only this job?" Log `rule proposed`. Only after the user confirms it and it's in `filters.md`/`memory.md`, log `rule approved` with `--reply` holding their words verbatim. To drop one role but not the company, use `excludedRoles`.
+- **Calibration is advisory.** Report `calibrate` as it prints it. With few outcomes it says "n too small" or "insufficient": say so, and never turn 2 of 3 into a percentage. Never retune the fit weights automatically. Suggest changes and let the user decide.
+- **Retention.** After a hire, ask for short check-ins at 30, 90, 180 and 365 days (`checkin`: satisfaction 1–5, did the job match the posting 1–5, would stay). The posting saved at apply time (`outcomes/postings/`) is the reference. This tells the user, and the search, which kinds of job actually last.
+
+## 7. Tuning
 - The user changes a hard rule → edit `memory.md` **and** the matching `search/filters.md` JSON value, and add a line to the tuning log.
 - A source breaks → note it in `search/sources.md`, and disable it in `filters.md` or fix `scan.py`.
 - Too much noise or too few jobs → adjust `queries`, `titleKeywords`, `textKeywords`, `minTextHits`, `allowed`, and log the change.
@@ -73,4 +89,5 @@ Trigger: no `CLAUDE.md` + `search/filters.md` in the chosen folder.
 | `curriculum/profile.md` | Allowed facts + do-not-claim |
 | `search/filters.md` | JSON config for the scripts + field guide + tuning log |
 | `search/sources.md`, `search/scan-log.md` | Source notes, scan history |
-| `interview/*.md` | Stories, salary notes, company prep |
+| `interview/*.md` | Stories + numbers bank, AI-interview rules, salary notes, company prep |
+| `outcomes/` | Event log (`outcomes.jsonl`), saved postings, schema README |

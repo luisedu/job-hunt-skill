@@ -5,6 +5,7 @@
 A [Claude Code](https://claude.com/claude-code) skill that runs your job search from a local folder of Markdown files:
 
 - **Scans 11 public job boards** (RemoteOK, Remotive, Himalayas, Jobicy, We Work Remotely, Working Nomads, HN "Who is hiring", Arbeitnow, GetOnBoard, Gupy, and optionally Remote Rocketship).
+- **Watches companies' own job boards** (Greenhouse, Ashby, Lever, Workable) for the companies you list, so you see openings the day they are posted. `--probe-ats` finds each company's board.
 - **Filters out the noise** most job tools ignore:
   - "remote" jobs that only hire in another country
   - ghost jobs (stale, reposted, talent pools)
@@ -14,6 +15,9 @@ A [Claude Code](https://claude.com/claude-code) skill that runs your job search 
 - **Ranks by fit** against your profile, then Claude vets every job by reading it.
 - **Tailors CV and cover-letter PDFs** using only facts from your CV, with a "do not claim" list to keep it honest.
 - **Tracks applications** and asks you, now and then, whether you've heard back.
+- **Logs outcomes** in an append-only event log: every filter decision, every skip (with your reason), every stage, and check-ins at 30/90/180/365 days after a hire. It saves each posting when you apply, so you can later check whether the job matched what was advertised.
+- **Learns carefully:** a correction becomes a rule only after you approve it (your words are stored verbatim). `calibrate` checks whether the fit score predicts interviews, and shows "n too small" instead of a fake percentage.
+- **Preps AI-scored interviews** (audio bots, one-way video): answer rules, a numbers bank and mock runs.
 
 It **never applies, emails or messages anyone for you.** You stay in control of every application.
 
