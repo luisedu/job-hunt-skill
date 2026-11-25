@@ -20,9 +20,8 @@ Implemented in the skill's `scripts/scan.py`. Turn on/off in `search/filters.md`
 ## Manual-only (login walls / anti-bot, don't scrape)
 LinkedIn, Indeed, Glassdoor, Wellfound. Search them yourself with filters: role · Remote · your country/region · past week.
 
-## Verifying a single job or company
-- Ashby `api.ashbyhq.com/posting-api/job-board/<co>` · Greenhouse `boards-api.greenhouse.io/v1/boards/<co>/jobs` · SmartRecruiters `api.smartrecruiters.com/v1/companies/<co>/postings/<id>`
-- Unknown company: domain age `rdap.verisign.com/com/v1/domain/<domain>`, MX via `dns.google/resolve?name=<domain>&type=MX`, website content, recruiter email domain.
+## Verifying a company
+Use the skill's `verify_company.py` (domain age, mail, website, job board, recruiter email).
 
 ## Notes
 _(add quirks, broken endpoints and yield observations here)_
@@ -34,6 +33,5 @@ Public JSON APIs, no key: Greenhouse, Ashby, Lever, Workable. List target compan
 If a page needs JavaScript or blocks scripts (some LinkedIn posts, some career sites), a scraping MCP such as Firecrawl can read it. Use it only as a fallback for single pages; free tiers have small credit budgets.
 
 ## Terms of use
-- Always show the source name and the original job link (RemoteOK, Remotive and Jobicy require attribution and a link back).
 - Never republish job data on other sites or use it to collect sign-ups. This workspace is for your personal search.
 - Respect each source's rate limits. Don't run full scans more than a couple of times a day.

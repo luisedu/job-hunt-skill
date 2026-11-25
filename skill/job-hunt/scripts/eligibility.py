@@ -12,8 +12,8 @@ verdict:
 It separates residence ("must reside in", "residence required") from the right to work ("authorized to work in",
 "citizens of"): a passport satisfies the second, not the first.
 """
-import datetime as dt, re
-from zoneinfo import ZoneInfo
+import datetime as dt, re, sys
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 EU = "AT BE BG HR CY CZ DK EE FI FR DE GR HU IE IT LV LT LU MT NL PL PT RO SK SI ES SE".split()
 EEA = EU + ["NO", "IS", "LI"]
@@ -22,7 +22,7 @@ REGIONS = [  # (regex, members) - checked in order; country names after regions
     (r"\b(european union|eu|eea)\b", EEA), (r"\beurope(an)?\b|\bemea\b", EEA + ["GB", "CH", "UA", "RS"]),
     (r"\blatam\b|latin america|south america", LATAM), (r"\bamericas\b", LATAM + ["US", "CA"]),
     (r"\bnorth america\b", ["US", "CA", "MX"]), (r"\bapac\b|asia[- ]pacific", ["AU", "NZ", "SG", "JP", "KR", "IN", "PH", "ID", "MY", "TH", "VN"]),
-    (r"united states|\busa?\b|u\.s\.|\bamerica\b", ["US"]), (r"united kingdom|\buk\b|britain|england|london", ["GB"]),
+    (r"united states|\busa\b|u\.s\.|\bamerica\b|\bthe us\b", ["US"]), (r"united kingdom|\buk\b|britain|england|london", ["GB"]),
     (r"canada|toronto|vancouver", ["CA"]), (r"brazil|brasil", ["BR"]), (r"portugal|lisbon", ["PT"]), (r"spain|madrid|barcelona", ["ES"]),
     (r"germany|deutschland|berlin|munich", ["DE"]), (r"france|paris", ["FR"]), (r"ital(y|ia)", ["IT"]), (r"netherlands|amsterdam", ["NL"]),
     (r"poland|warsaw", ["PL"]), (r"ireland|dublin", ["IE"]), (r"switzerland|zurich", ["CH"]), (r"finland|helsinki", ["FI"]),
@@ -51,7 +51,7 @@ TZ_MENTION = re.compile(r"\b(?:utc|gmt)\s?([+-]\d{1,2})\b|\b(" + "|".join(TZ) + 
 
 def countries(text):
     t = (text or "").lower()
-    out = []
+    out = ["US"] if re.search(r"\bUS\b", text or "") else []  # upper case only: "works for us" is not the USA
     for pat, members in REGIONS:
         if re.search(pat, t):
             out += [m for m in members if m not in out]
@@ -80,7 +80,13 @@ def tz_overlap(job, person, today=None):
     if off is None:
         return None, None
     today = today or dt.datetime.now(dt.timezone.utc)
-    mine = ZoneInfo(person["timezone"]).utcoffset(today.replace(tzinfo=None)).total_seconds() / 3600
+    try:
+        zone = ZoneInfo(person["timezone"])
+    except (ZoneInfoNotFoundError, ValueError):
+        print(f"person.timezone {person['timezone']!r} is not an IANA zone (e.g. America/Sao_Paulo, Europe/Lisbon); "
+              "time-zone overlap skipped (on Windows: pip install tzdata)", file=sys.stderr)
+        return None, None
+    mine = zone.utcoffset(today.replace(tzinfo=None)).total_seconds() / 3600
     return max(0.0, 8 - abs(mine - off)), m.group(0).strip()
 
 

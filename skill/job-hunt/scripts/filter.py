@@ -16,17 +16,11 @@ Writes PATH/search/scans/results-YYYY-MM-DD.json and prints a ranked summary.
 import argparse, collections, datetime as dt, glob, json, os, re, subprocess, sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from config import load_config  # noqa: E402
+from config import load_config, write_atomic  # noqa: E402
 import eligibility as EL  # noqa: E402
 import netpay  # noqa: E402
 
 GLOBAL = re.compile(r"worldwide|anywhere|global|unrestricted|all countries|any (location|country|timezone)|work from anywhere", re.I)
-COUNTRY_WORDS = re.compile(
-    r"united states|\busa?\b|u\.s\.|canada|united kingdom|\buk\b|europe|\beu\b|emea|apac|latam|latin america|americas|"
-    r"germany|deutschland|france|spain|portugal|netherlands|poland|india|israel|australia|ireland|italy|sweden|switzerland|"
-    r"austria|belgium|denmark|norway|finland|czech|romania|ukraine|singapore|japan|china|korea|mexico|argentina|colombia|"
-    r"chile|peru|brazil|brasil|philippines|vietnam|pakistan|turkey|egypt|nigeria|kenya|south africa|new zealand|"
-    r"new york|california|texas|london|berlin|munich|toronto", re.I)
 RESTRICT = re.compile(
     r"(?:must|need to|required to|should)\s+(?:be\s+)?(?:currently\s+)?(?:be\s+)?(?:based|located|reside|residing|live|living)\s+in\s+(?:the\s+)?([a-z .]{2,30})"
     r"|authori[sz]ed to work in (?:the\s+)?([a-z .]{2,20})"
@@ -46,6 +40,21 @@ def words_re(words):
     if not words:
         return re.compile(r"(?!x)x")
     return re.compile(r"(?:" + "|".join(r"\b" + re.escape(w).replace(r"\ ", r"[\s-]?") + r"\b" for w in words) + r")", re.I)
+
+
+LEGAL = re.compile(r"\b(the|a|inc|llc|ltd|ltda|gmbh|s\.?a|plc|corp|corporation|co|bv|ag|sas|srl|spa|limited|me|eireli)\b\.?")
+
+
+def company_words(name):
+    """Significant words of a company name: no legal suffixes, articles or punctuation ('The Acme Co.' -> ['acme'])."""
+    return re.sub(r"[^a-z0-9 ]", " ", LEGAL.sub(" ", (name or "").lower())).split()
+
+
+def same_company(a, b):
+    """'Acme' matches 'Acme Corp' and 'Acme Robotics' (one name starts the other); 'The X' never matches 'The Y'."""
+    wa, wb = company_words(a), company_words(b)
+    n = min(len(wa), len(wb))
+    return n > 0 and wa[:n] == wb[:n]
 
 
 def norm_title(s):
@@ -76,6 +85,31 @@ def fx_table(cfg):
     return tbl
 
 
+NUM = re.compile(r"(\d{1,3}(?:[.,]\d{3})+|\d+)([.,]\d{1,2})?(?!\d)\s*(k\b)?", re.I)
+
+
+def amounts(txt):
+    """Amounts in salary text: '4.000' / '4,000' -> 4000, '4.5k' -> 4500, and a trailing k covers the range ('50-60k')."""
+    found = []
+    for m in NUM.finditer(txt):
+        v = int(re.sub(r"[.,]", "", m.group(1))) + (float("0." + m.group(2)[1:]) if m.group(2) else 0)
+        found.append((v, bool(m.group(3))))
+    k = any(x[1] for x in found)
+    vals = [v * 1000 if (kk or (k and v < 1000)) else v for v, kk in found]
+    return [v for v in vals if v > 5]
+
+
+def period(txt):
+    """Pay period named in salary text ('' when none)."""
+    t = txt.lower()
+    for per, pat in (("hour", r"hour|/h\b|\bhr\b|/hr|\bhora"), ("day", r"\bday\b|/day|daily|\bdia\b|di[áa]ria"),
+                     ("week", r"week|semana"), ("year", r"year|annual|\byr\b|/y\b|\bp\.?a\.?\b|a[ñn]o\b|anual|jahr"),
+                     ("month", r"month|/mo\b|m[êe]s\b|monat")):
+        if re.search(pat, t):
+            return per
+    return ""
+
+
 def monthly_pay(j, cfg, fx):
     """Return (low, high) monthly pay in home currency, or None."""
     s, hours = j.get("sal"), cfg["pay"]["hoursPerMonth"]
@@ -83,14 +117,7 @@ def monthly_pay(j, cfg, fx):
     if s and "text" in s:
         txt = s["text"]
         cur = "EUR" if "€" in txt else "GBP" if "£" in txt else "BRL" if "R$" in txt else "USD"
-        for n, k in re.findall(r"(\d[\d,.]*)\s*(k)?", txt, re.I):
-            try:
-                v = float(n.replace(",", "")) * (1000 if k else 1)
-            except ValueError:
-                continue
-            if v > 5:
-                vals.append(v)
-        per = "hour" if re.search(r"hour|/h\b|hr", txt, re.I) else "month" if re.search(r"month|/mo", txt, re.I) else ""
+        vals, per = amounts(txt), period(txt)
     elif not s:  # no salary field: look for an amount in the home currency in the text (e.g. Brazilian "R$ 18.000")
         home = cfg["profile"]["currency"].upper()
         sym = {"BRL": r"R\$", "EUR": r"€", "GBP": r"£"}.get(home)
@@ -179,14 +206,18 @@ def classify(j, cfg, R, fx, today):
         reasons.append("onsite")
     elif L["remoteOnly"] and j["source"].startswith("HN") and not re.search("remote", loc, re.I):
         reasons.append("not remote")
-    stated = locl.strip(" ,;-") not in ("", "?", "unrestricted") and j["source"] not in ("HN WhoIsHiring", "Gupy")
+    place = re.sub(r"(?:100%\s*|fully\s+)?\bremot[eo]\b|[()/|]", " ", locl)  # a bare "Remote" names no place
+    stated = place.strip(" ,;-") not in ("", "?", "unrestricted") and j["source"] not in ("HN WhoIsHiring", "Gupy")
     if stated and not GLOBAL.search(locl) and not R["allowed"].search(locl) and not R["hybrid_city"].search(locl):
         reasons.append("restricted to " + locl.strip()[:40])
     m = RESTRICT.search(text)
     if m and not GLOBAL.search(locl) and not R["allowed"].search(locl):
         target = next((g for g in m.groups() if g), m.group(0))
         if not R["allowed"].search(target):
-            reasons.append("restricted: " + m.group(0)[:50])
+            if EL.countries(target):
+                reasons.append("restricted: " + m.group(0)[:50])
+            else:  # "must be located in a time zone…", "…in one of the countries where we have an entity"
+                flags.append("location condition: " + m.group(0)[:60])
     if not stated and not GLOBAL.search(loc + " " + head) and not R["allowed"].search(loc + " " + head):
         if L["acceptUnstated"]:
             flags.append("location not stated: verify eligibility")
@@ -241,7 +272,7 @@ def classify(j, cfg, R, fx, today):
     if co and any(r.get("company", "").lower() in co and norm_title(r.get("title", "")) == norm_title(j["title"])
                   for r in cfg["excludedRoles"]):
         reasons.append("role excluded")
-    if co and R["applied"] and any(a and a.split()[0] in co.split()[:2] for a in R["applied"]):
+    if co and R["applied"] and any(same_company(a, co) for a in R["applied"]):
         flags.append("ALREADY APPLIED / in pipeline")
 
     # ---- scams
@@ -318,7 +349,7 @@ def run(ws, raw_path=None, today=None):
     groups = collections.defaultdict(list)
     for j in raw:
         if j["status"] != "irrelevant":
-            groups[((norm_title(j["company"]).split() or [""])[0], norm_title(j["title"]))].append(j)
+            groups[((company_words(j["company"]) or [""])[0], norm_title(j["title"]))].append(j)
     final = []
     for g in groups.values():
         g.sort(key=lambda x: x["posted"] or "")
@@ -350,10 +381,12 @@ def run(ws, raw_path=None, today=None):
     res_path = os.path.join(os.path.dirname(raw_path), ("results-" + base[4:]) if base.startswith("raw-") else ("results-" + base))
     if os.path.abspath(res_path) == os.path.abspath(raw_path):
         raise SystemExit("refusing to overwrite the raw scan with results")
-    with open(res_path, "w") as fh:
-        json.dump({"keep": keep, "excluded": exc}, fh, ensure_ascii=False, indent=1)
-    summary = collections.Counter(re.sub(r"\d[\d,]*|\(.*|:.*", "#", j["reasons"][0])[:40] for j in exc)
-    return dict(raw=len(raw), irrelevant=sum(j["status"] == "irrelevant" for j in raw), unique=len(final),
+    write_atomic(res_path, json.dumps({"keep": keep, "excluded": exc}, ensure_ascii=False, indent=1))
+    first = [j["reasons"][0] for j in exc]
+    summary = collections.Counter("restricted to (location)" if x.startswith("restricted to ") else re.sub(r"\d[\d,]*|\(.*|:.*", "#", x)[:40]
+                                  for x in first)
+    places = collections.Counter(x[14:].strip(" ,")[:20] for x in first if x.startswith("restricted to "))
+    return dict(places=places.most_common(6), raw=len(raw), irrelevant=sum(j["status"] == "irrelevant" for j in raw), unique=len(final),
                 keep=keep, excluded=exc, reasons=summary.most_common(), path=res_path, currency=cfg["profile"]["currency"])
 
 
@@ -366,20 +399,23 @@ def main():
     today = dt.datetime.fromisoformat(a.today).replace(tzinfo=dt.timezone.utc) if a.today else None
     r = run(os.path.abspath(os.path.expanduser(a.workspace)), a.raw, today)
     print(f"raw {r['raw']} | irrelevant {r['irrelevant']} | unique relevant {r['unique']} | keep {len(r['keep'])} | excluded {len(r['excluded'])}")
-    print("excluded by reason:", r["reasons"][:12])
+    print("excluded by reason:", ", ".join(f"{k} {n}" for k, n in r["reasons"][:12]))
+    if r["places"]:
+        print("  restricted locations (top):", ", ".join(f"{k} {n}" for k, n in r["places"]))
     for j in r["keep"]:
         pay = f"{r['currency']} {j['pay_monthly'][0]:,}–{j['pay_monthly'][1]:,}/mo" if j.get("pay_monthly") else "no salary"
         if j.get("pay_net"):
             pay += f" → net ≈ {j['pay_net'][0]:,}–{j['pay_net'][1]:,} ({'/'.join(j['net_contracts'])}; estimate)"
         print(f"\n[{j['fit']}] {j['title']} — {j['company']} | {'+'.join(j['sources'])} | {j.get('age_days')}d | {pay}")
         print("   loc:", j["loc"][:110], f"| eligibility: {j.get('eligibility')}")
-        if j["flags"]:
-            print("   flags:", "; ".join(j["flags"]))
+        flags = [f for f in j["flags"] if f != "salary not listed"]  # already shown as "no salary"
+        if flags:
+            print("   flags:", "; ".join(flags))
         print("  ", j["urls"][0] if j["urls"] else "")
     print("\nsaved", r["path"])
     try:  # structured outcome log (outcomes/outcomes.jsonl); never fail the scan because of it
         import outcomes
-        print("outcomes: logged", outcomes.log_scan(os.path.abspath(os.path.expanduser(a.workspace)), r["path"]), "filter events")
+        outcomes.log_scan(os.path.abspath(os.path.expanduser(a.workspace)), r["path"])
     except Exception as e:
         print("outcomes: log failed:", e, file=sys.stderr)
 

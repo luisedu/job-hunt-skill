@@ -10,11 +10,12 @@ Usage:
   python3 verify_company.py --workspace WS --company "Acme" [--domain acme.com] [--email jane@acme.com] [--cnpj 00.000.000/0001-00]
   python3 verify_company.py --workspace WS --results search/scans/results-DATE.json   # kept jobs, unknown companies only
 """
-import argparse, datetime as dt, json, os, re, subprocess, sys, time
+import argparse, datetime as dt, json, os, re, sys, time
 from urllib.parse import quote, urlparse
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import scan  # noqa: E402  (get, getj, ATS_APIS)
+from config import write_atomic, read_json  # noqa: E402
 from filter import FREEMAIL  # noqa: E402
 
 TTL_DAYS = 30
@@ -26,15 +27,8 @@ NOT_COMPANY = re.compile(r"greenhouse\.io|ashbyhq\.com|lever\.co|workable\.com|s
 
 
 def http(url, timeout=20):
-    """(status, final_url, body) using curl; status 0 when unreachable."""
-    r = subprocess.run(["curl", "-s", "-L", *scan.CURL_SAFE, "-m", str(timeout), "-A", scan.UA, "-o", "-", "-w", "\n__META__%{http_code} %{url_effective}", "--", url],
-                       capture_output=True, text=True)
-    body, _, meta = r.stdout.rpartition("\n__META__")
-    code, _, final = meta.partition(" ")
-    try:
-        return int(code), final, body
-    except ValueError:
-        return 0, url, ""
+    """(status, final_url, body); every redirect hop must be a public host (scan.fetch_public)."""
+    return scan.fetch_public(url, timeout)
 
 
 def norm(s):
@@ -154,7 +148,10 @@ def check(company, domain=None, email=None, cnpj=None, job=None, today=None, gue
     """Returns {trust, verdict, signals[(points, text)], next_steps[]}."""
     today = today or dt.datetime.now(dt.timezone.utc)
     sig, nxt = [], []
-    domain = (domain or "").lower().removeprefix("www.") or None
+    given = (domain or "").lower().removeprefix("www.")
+    domain = safe_host(given)
+    if given and not domain:
+        sig.append((0, f"--domain {given!r} refused: public hostnames only"))
     if not domain and job:
         domain, how = job_domain(company, job)
         if domain:
@@ -189,7 +186,7 @@ def check(company, domain=None, email=None, cnpj=None, job=None, today=None, gue
             sig.append((-25, "website looks parked / placeholder"))
         else:
             title = re.search(r"<title[^>]*>(.*?)</title>", body, re.I | re.S)
-            sig.append((10, f"website up: {(title.group(1).strip()[:60] if title else final)}"))
+            sig.append((10, f"website up, title (untrusted text): \"{scan.strip(title.group(1))[:60] if title else final}\""))
     else:
         sig.append((-5, "no company website found"))
         nxt.append("find the company's own website (not a job board) and re-run with --domain")
@@ -234,7 +231,7 @@ def check(company, domain=None, email=None, cnpj=None, job=None, today=None, gue
 class Cache:
     def __init__(self, ws):
         self.path = os.path.join(ws, "search", "company-cache.json")
-        self.data = json.load(open(self.path)) if os.path.exists(self.path) else {}
+        self.data = read_json(self.path) if os.path.exists(self.path) else {}
 
     def get(self, key, today):
         r = self.data.get(key)
@@ -247,7 +244,7 @@ class Cache:
         self.data = {k: v for k, v in self.data.items() if (today - dt.date.fromisoformat(v["checked"])).days <= TTL_DAYS}  # keep nothing expired
         self.data[key] = r
         os.makedirs(os.path.dirname(self.path), exist_ok=True)
-        json.dump(self.data, open(self.path, "w"), ensure_ascii=False, indent=1)
+        write_atomic(self.path, json.dumps(self.data, ensure_ascii=False, indent=1))
 
 
 def show(r):
@@ -272,7 +269,7 @@ def main():
     cache, today = Cache(ws), dt.datetime.now(dt.timezone.utc)
     todo = []
     if a.results:
-        res = json.load(open(a.results, encoding="utf-8"))
+        res = read_json(a.results)
         todo = [(j["company"], None, None, None, j) for j in res["keep"] if j.get("company")]
     elif a.company:
         todo = [(a.company, a.domain, a.email, a.cnpj, None)]

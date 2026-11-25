@@ -1,6 +1,6 @@
 {
   "name": "job-hunt",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "Honest, low-noise job search from a local workspace: multi-board and company-board scans, ghost/restriction/pay/scam filtering, eligibility and net-pay estimates, ATS-checked CV tailoring, interview prep, offer comparison and an outcome log. It never applies for you.",
   "author": {"name": "luisedu", "url": "https://github.com/luisedu"},
   "homepage": "https://github.com/luisedu/job-hunt-skill",

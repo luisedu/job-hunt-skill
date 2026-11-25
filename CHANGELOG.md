@@ -1,5 +1,34 @@
 # Changelog
 
+## 0.2.2 (2026-11-25)
+- **Security:**
+  - The Remote Rocketship API key never follows a redirect (urllib would have copied it to the new host).
+  - The company check and `ats_check --posting URL` only fetch public hosts, check every redirect hop and pin it to the checked address; `--domain` goes through the same host check.
+  - Job links from boards keep only http(s); downloads are capped at 20 MB.
+  - Workspace files and folders are owner-only (0700/0600); caches, scans, results and `filters.md` edits are written atomically.
+  - `redact` no longer keeps a backup with the erased data, and removes old ones.
+  - New `render_pdf.py` refuses HTML that loads remote resources and puts PDFs in a safe company-slug folder; SKILL.md says to HTML-escape filled values.
+  - CI actions are pinned to commits, with a read-only token.
+- **Wrong results fixed:**
+  - A bare "Remote" location no longer excludes a job (it's treated as unstated).
+  - "Must be located in a time zone…" with no country is a flag, not an exclusion.
+  - "Works for us" no longer reads as the USA.
+  - Salary text: "50-60k", "4.000" and yearly ranges with dots now parse correctly; day and week rates are recognised.
+  - ATS check: "bonus" or "preferred" inside a sentence no longer turns every requirement into "nice to have".
+  - "Already applied" and duplicate grouping no longer confuse "The X" with "The Y".
+  - `offers.py` handles day and week rates and rejects unknown periods.
+- **Usefulness:**
+  - An invalid timezone warns instead of crashing, and `init` rejects it up front.
+  - `scan.py --only` rejects unknown source names.
+  - `stage followed_up` stops `due` repeating the same follow-up for 7 days.
+  - Clean errors for missing poppler tools, unreadable posting URLs, bad `--data` JSON, and an apply event with no matching scanned posting.
+  - The workspace `CLAUDE.md` holds the real skill path.
+- **Less verbose:**
+  - The workspace `CLAUDE.md` is a short pointer to the skill (about 1,000 fewer tokens every session).
+  - Duplicated rules removed from `memory.md`, `sources.md`, the outcomes README and the reference docs.
+  - `filter.py` groups "restricted to …" exclusions and drops repeated flags; small-sample notes print once per report.
+- **Docs:** correct plugin install commands; the `answers.json` schema lists the `person` fields.
+
 ## 0.2.1 (2026-11-25)
 - **Source terms:** Gupy's candidate terms forbid aggregating postings. The source is no longer recommended, stays off by default and warns on every scan if enabled. PerfectRole: terms not found, so check them before enabling.
 - **Policy wording:** net pay is an AI-assisted estimate from a fixed formula; the tax regime and what to report are for an accountant; eligibility reads the posting, not legal advice; company verdicts are private signals, never published.

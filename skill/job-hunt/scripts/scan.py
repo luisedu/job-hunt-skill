@@ -13,21 +13,56 @@ Normalized job: {source, sid, title, company, loc, url, text, posted (ISO-8601 U
 sal: {min, max, cur, per} | {text} | null
 Only public APIs / RSS feeds are used. No login-walled sites are scraped.
 """
-import argparse, datetime as dt, html, json, os, re, stat, subprocess, sys, time, urllib.error, urllib.request
+import argparse, datetime as dt, html, ipaddress, json, os, re, socket, stat, subprocess, sys, time, urllib.error, urllib.request
 from concurrent.futures import ThreadPoolExecutor
-from urllib.parse import quote
+from urllib.parse import quote, urljoin, urlparse
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from config import load_config  # noqa: E402
+from config import load_config, write_atomic, read_json  # noqa: E402
 
 UA = "Mozilla/5.0 (X11; Linux x86_64) job-hunt-skill/1.0"
 
 
-CURL_SAFE = ["--proto", "=https,http", "--proto-redir", "=https,http", "--max-redirs", "5"]
+CURL_SAFE = ["--proto", "=https,http", "--proto-redir", "=https,http", "--max-redirs", "5", "--max-filesize", "20M"]
 
 
 def get(url, timeout=40):
     return subprocess.run(["curl", "-s", "-L", *CURL_SAFE, "-m", str(timeout), "-A", UA, "--", url], capture_output=True, text=True).stdout
+
+
+def public_ip(host):
+    """The host's first address when every address it resolves to is public; None for localhost, private,
+    link-local or internal names (a posting or redirect must never make us probe the local network)."""
+    host = (host or "").lower().rstrip(".")
+    if not host or host == "localhost" or host.endswith((".local", ".internal", ".lan", ".localhost")):
+        return None
+    try:
+        ips = [ipaddress.ip_address(i[4][0].split("%")[0]) for i in socket.getaddrinfo(host, None)]
+    except (OSError, ValueError):
+        return None
+    return str(ips[0]) if ips and all(ip.is_global for ip in ips) else None
+
+
+def fetch_public(url, timeout=20, max_redirects=5):
+    """(status, final_url, body) for an untrusted URL: http(s) only, every hop checked with public_ip and pinned
+    to that address (no DNS rebinding). Status 0 when refused or unreachable."""
+    for _ in range(max_redirects + 1):
+        p = urlparse(url)
+        ip = public_ip(p.hostname) if p.scheme in ("http", "https") else None
+        if not ip:
+            return 0, url, ""
+        port = p.port or (443 if p.scheme == "https" else 80)
+        pin = f"{p.hostname}:{port}:{'[' + ip + ']' if ':' in ip else ip}"
+        r = subprocess.run(["curl", "-s", *CURL_SAFE, "--resolve", pin, "-m", str(timeout), "-A", UA, "-o", "-",
+                            "-w", "\n__META__%{http_code} %{redirect_url}", "--", url], capture_output=True, text=True)
+        body, _, meta = r.stdout.rpartition("\n__META__")
+        code, _, nxt = meta.partition(" ")
+        code = int(code) if code.isdigit() else 0
+        if 300 <= code < 400 and nxt.strip():
+            url = urljoin(url, nxt.strip())
+            continue
+        return code, url, body
+    return 0, url, ""
 
 
 def cached_getj(cfg, name, url, ttl_hours, max_per_day=None):
@@ -38,20 +73,20 @@ def cached_getj(cfg, name, url, ttl_hours, max_per_day=None):
     d = os.path.join(ws, "search", "cache")
     os.makedirs(d, exist_ok=True)
     path, meta_path = os.path.join(d, f"{name}.json"), os.path.join(d, f"{name}.meta.json")
-    meta = json.load(open(meta_path)) if os.path.exists(meta_path) else {}
+    meta = read_json(meta_path) if os.path.exists(meta_path) else {}
     now, today = time.time(), dt.date.today().isoformat()
     fresh = os.path.exists(path) and now - meta.get("fetched", 0) < ttl_hours * 3600
     calls = meta.get("calls", {}).get(today, 0)
     if not fresh and (max_per_day is None or calls < max_per_day):
         data = getj(url)
         if data is not None:
-            json.dump(data, open(path, "w"))
+            write_atomic(path, json.dumps(data))
             meta = {"fetched": now, "calls": {today: calls + 1}}
-            json.dump(meta, open(meta_path, "w"))
+            write_atomic(meta_path, json.dumps(meta))
             return data
     elif not fresh:
         print(f"{name}: daily request limit ({max_per_day}) reached, using cached data", file=sys.stderr)
-    return json.load(open(path)) if os.path.exists(path) else None
+    return read_json(path) if os.path.exists(path) else None
 
 
 def getj(url, **kw):
@@ -84,12 +119,27 @@ def pdate(s):
         return None
 
 
+def safe_url(u):
+    """Keep only plain http(s) links from untrusted sources (no javascript:, file:, control or bidi characters)."""
+    u = CONTROL.sub("", str(u or "")).strip()
+    return u if re.match(r"https?://[^\s/]+", u, re.I) else ""
+
+
 def job(source, sid, title, company, loc, url, text, posted, sal=None, extra=None):
     return dict(source=source, sid=str(sid), title=strip(title), company=strip(company or ""), loc=strip(loc or ""),
-                url=url, text=strip(text)[:20000], posted=posted.isoformat() if posted else None, sal=sal, extra=extra or {})
+                url=safe_url(url), text=strip(text)[:20000], posted=posted.isoformat() if posted else None, sal=sal, extra=extra or {})
 
 
 # ---------------------------------------------------------------- sources
+class NoRedirect(urllib.request.HTTPRedirectHandler):
+    """urllib copies every header, Authorization included, to a redirect target: refuse redirects instead."""
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        raise urllib.error.HTTPError(req.full_url, code, f"redirect to {newurl} refused (API key stays here)", headers, fp)
+
+
+API = urllib.request.build_opener(NoRedirect)
+
+
 def rr_post(keyf, body):
     """POST with the API key in a header, read into memory only: never in a command line, log or error message."""
     if os.stat(keyf).st_mode & (stat.S_IRWXG | stat.S_IRWXO):
@@ -97,8 +147,8 @@ def rr_post(keyf, body):
     key = open(keyf).read().strip()
     req = urllib.request.Request("https://www.remoterocketship.com/api/openclaw/jobs/", data=body, method="POST",
                                  headers={"Authorization": "Bearer " + key, "Content-Type": "application/json", "User-Agent": UA})
-    with urllib.request.urlopen(req, timeout=60) as r:  # fixed https URL above, no user-controlled scheme  # nosec B310
-        return json.loads(r.read().decode())
+    with API.open(req, timeout=60) as r:  # fixed https URL above, no user-controlled scheme  # nosec B310
+        return json.loads(r.read(20_000_000).decode())
 
 
 def src_remoterocketship(cfg):
@@ -427,7 +477,10 @@ def main():
     cfg["_workspace"] = ws
     enabled = [s for s, on in cfg["sources"].items() if on and s in SOURCES]
     if a.only:
-        enabled = [s for s in a.only.split(",") if s in SOURCES]
+        enabled = [s.strip() for s in a.only.split(",") if s.strip()]
+        bad = [s for s in enabled if s not in SOURCES]
+        if bad:
+            raise SystemExit(f"unknown source(s): {', '.join(bad)}. Valid: {', '.join(SOURCES)}")
     allj, stats = [], {}
     with ThreadPoolExecutor(6) as ex:
         futs = {s: ex.submit(SOURCES[s], cfg) for s in enabled}
@@ -445,12 +498,12 @@ def main():
     os.makedirs(out, exist_ok=True)
     fn = os.path.join(out, f"raw-{dt.date.today().isoformat()}.json")
     if os.path.exists(fn):  # never replace a good same-day scan with an empty or much smaller one
-        prev = len(json.load(open(fn)))
+        prev = len(read_json(fn))
         if len(allj) < prev / 2:
             fn = fn.replace(".json", f"-{dt.datetime.now():%H%M}.json")
             print(f"this scan ({len(allj)} jobs) is much smaller than today's earlier one ({prev}); kept that and saved this as {os.path.basename(fn)}",
                   file=sys.stderr)
-    json.dump(allj, open(fn, "w"))
+    write_atomic(fn, json.dumps(allj))
     print(json.dumps(stats), "total", len(allj))
     print("saved", fn)
 
