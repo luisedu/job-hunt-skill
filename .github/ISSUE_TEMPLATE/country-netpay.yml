@@ -1,0 +1,34 @@
+name: Net pay for my country
+description: Request or contribute a net-pay module for a country
+labels: ["netpay"]
+body:
+  - type: markdown
+    attributes:
+      value: "Net pay is an estimate from a fixed formula, not tax advice. Please link official sources (tax authority, social security) for every rate. Don't share your own salary here."
+  - type: input
+    id: country
+    attributes:
+      label: Country (ISO code)
+      placeholder: "PT"
+    validations:
+      required: true
+  - type: checkboxes
+    id: contracts
+    attributes:
+      label: Contract types to cover
+      options:
+        - label: Local employee
+        - label: Local self-employed / company (like Brazil's PJ)
+        - label: Contractor for a foreign company
+  - type: textarea
+    id: rules
+    attributes:
+      label: Rules and official sources
+      description: Income-tax brackets, social contributions, number of salaries per year, and links to the official pages. See docs/netpay-countries.md for the module format.
+    validations:
+      required: true
+  - type: dropdown
+    id: help
+    attributes:
+      label: Can you open the pull request?
+      options: ["Yes", "I can review one", "No, request only"]

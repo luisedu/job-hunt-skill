@@ -105,7 +105,10 @@ def main():
     os.makedirs(ws, exist_ok=True)
     os.chmod(ws, 0o700)
     a.setdefault("today", dt.date.today().isoformat())
-    a["skillDir"], a["workspace"] = SKILL, ws
+    a["workspace"] = ws
+    # plugin installs live in a versioned cache folder that changes on every update: point to the skill, not the path
+    a["skillRef"] = ("the installed `job-hunt` plugin (SKILL_DIR = the skill's base directory, shown when it loads)"
+                     if f"{os.sep}plugins{os.sep}cache{os.sep}" in SKILL else f"`{SKILL}/SKILL.md` (SKILL_DIR = `{SKILL}`)")
     a.setdefault("excludedCompaniesList", "\n".join(f"- {c}" for c in a.get("excludedCompanies", [])) or "- (none yet)")
     a["filtersJson"] = filters_json(a)
 

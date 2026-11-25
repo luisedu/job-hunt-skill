@@ -1,0 +1,33 @@
+name: A job source broke
+description: A board returns 0 jobs, errors, or wrong data
+labels: ["source"]
+body:
+  - type: markdown
+    attributes:
+      value: "Please don't paste your CV, salary, `filters.md` personal block, API keys or job-application details here: this issue is public."
+  - type: input
+    id: source
+    attributes:
+      label: Source key
+      description: The name in `filters.md` → `sources` (e.g. remotive, himalayas, ats)
+    validations:
+      required: true
+  - type: textarea
+    id: output
+    attributes:
+      label: What scan.py printed
+      description: 'The lines about this source, e.g. "remotive: 0 jobs …" or an ERR line'
+      render: text
+    validations:
+      required: true
+  - type: input
+    id: since
+    attributes:
+      label: Last day it worked (if known)
+  - type: input
+    id: version
+    attributes:
+      label: Skill version and OS
+      placeholder: "0.2.2, Ubuntu 24.04 / macOS 15 / Windows 11"
+    validations:
+      required: true

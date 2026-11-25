@@ -112,7 +112,7 @@ def main():
     home = cfg["profile"]["currency"].upper()
     rows = compare(offers, cfg, fx_table(cfg), not a.no_history)
     print(f"Offers compared in {home}/month (estimates, not tax advice)\n")
-    print(f"{'offer':30} {'contract':15} {'gross':>9} {'net':>9} {'benefits':>9} {'total':>9}  CLT gross for same net")
+    print(f"{'offer':30} {'contract':15} {'gross':>9} {'net':>9} {'benefits':>9} {'total':>9}  local-employee gross for same net")
     for r in rows:
         if r.get("error"):
             print(f"{r['name'][:30]:30} {r['error']}")

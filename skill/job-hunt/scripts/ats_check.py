@@ -112,6 +112,8 @@ def posting_text(src):
         if len(text) < 300:
             raise SystemExit(f"could not read the posting at {src} (HTTP {code}; public http(s) hosts only, and pages built by "
                              "JavaScript come back empty): save the posting text to a file and pass that file to --posting")
+        print("(posting read from a web page, which may include menus or other jobs: for exact keywords, save the posting text to a file)",
+              file=sys.stderr)
         return text
     if not os.path.exists(src):
         raise SystemExit(f"--posting: no such file {src}")

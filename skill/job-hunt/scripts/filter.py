@@ -385,7 +385,8 @@ def run(ws, raw_path=None, today=None):
         raise SystemExit("refusing to overwrite the raw scan with results")
     write_atomic(res_path, json.dumps({"keep": keep, "excluded": exc}, ensure_ascii=False, indent=1))
     first = [j["reasons"][0] for j in exc]
-    summary = collections.Counter("restricted to (location)" if x.startswith("restricted to ") else re.sub(r"\d[\d,]*|\(.*|:.*", "#", x)[:40]
+    summary = collections.Counter("restricted to (location)" if x.startswith("restricted to ") else
+                                  "restricted (posting text)" if x.startswith("restricted:") else re.sub(r"\d[\d,]*|\(.*|:.*", "#", x)[:40]
                                   for x in first)
     places = collections.Counter(x[14:].strip(" ,")[:20] for x in first if x.startswith("restricted to "))
     return dict(places=places.most_common(6), raw=len(raw), irrelevant=sum(j["status"] == "irrelevant" for j in raw), unique=len(final),
