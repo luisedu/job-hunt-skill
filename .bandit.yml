@@ -1,0 +1,8 @@
+# Bandit (security lint) for the skill's scripts. Any finding not listed here fails CI.
+# Skipped checks, and why:
+#   B404 import subprocess            - needed to call curl/pdftotext; reviewed (PR #5)
+#   B603 subprocess without shell     - argument lists only, never shell=True; URLs follow "--" (scan.CURL_SAFE)
+#   B607 partial executable path      - curl / pdftotext / pdfinfo / pdffonts are resolved from PATH on purpose
+# Single lines are marked with "# nosec <ID>" plus a reason in the code.
+skips: ["B404", "B603", "B607"]
+exclude_dirs: ["tests"]

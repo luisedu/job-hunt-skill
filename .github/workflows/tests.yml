@@ -24,3 +24,5 @@ jobs:
         run: python -m py_compile skill/job-hunt/scripts/*.py
       - name: Lint (pyflakes errors only)
         run: pip install --quiet ruff==0.8.6 && ruff check .
+      - name: Security lint (bandit; known items documented in .bandit.yml)
+        run: pip install --quiet bandit==1.8.0 && bandit -q -r skill -c .bandit.yml

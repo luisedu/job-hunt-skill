@@ -13,7 +13,8 @@ Implemented in the skill's `scripts/scan.py`. Turn on/off in `search/filters.md`
 | `hn` | HN "Who is hiring" | startups, many remote | Latest monthly thread found automatically |
 | `arbeitnow` | Arbeitnow API | Europe (mostly DE) | Mostly onsite. Enable for EU candidates |
 | `getonbrd` | GetOnBoard API | LATAM | Never add `expand=` (returns 0) |
-| `gupy` | Gupy portal | Brazil | Parses `__NEXT_DATA__` from portal.gupy.io/job-search. Use `gupyTerms` in Portuguese |
+| `gupy` | Gupy portal | Brazil | **Off by default, not recommended:** Gupy's candidate terms forbid aggregating, copying or duplicating postings. Search Gupy by hand; many Gupy jobs also reach other sources. If you enable it anyway, it's your decision (a warning prints on every scan) |
+| `perfectrole` | perfectrole.app | global | Off by default. robots.txt allows the job sitemaps and pages; their terms of use weren't found, so check them before enabling |
 | `remoterocketship` | Remote Rocketship API | 100k+ company career pages | **Needs a paid API key** at `~/.config/remoterocketship/api-key`. Location only in the URL slug |
 
 ## Manual-only (login walls / anti-bot, don't scrape)

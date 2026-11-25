@@ -20,7 +20,7 @@ Everything personal lives in the user's **workspace** folder (markdown + PDFs). 
 ## 1. First run (no `CLAUDE.md` + `search/filters.md` in the chosen folder)
 1. Ask where the workspace lives (default `~/JobHunt`) and for the CV PDF.
 2. Read the CV (`pdftotext -layout <cv.pdf> -`), then ask in one short round only what it can't answer: target roles and seniority; home country/city and timezone, remote only or hybrid where; citizenships, residence and work permits; pay floor (monthly, home currency) and target; companies to exclude; document languages.
-3. Build `answers.json` (schema: `scripts/init_workspace.py` docstring; examples in the repo's `examples/`). Derive `queries` (3–8 broad terms), `titleKeywords`, `textKeywords`, `fit`, and the `person` block. Enable regional sources (`gupy` Brazil, `getonbrd` LATAM, `arbeitnow` EU).
+3. Build `answers.json` (schema: `scripts/init_workspace.py` docstring; examples in the repo's `examples/`). Derive `queries` (3–8 broad terms), `titleKeywords`, `textKeywords`, `fit`, and the `person` block. Enable regional sources whose terms allow it (`getonbrd` LATAM, `arbeitnow` EU). For Brazil, suggest searching Gupy by hand: its terms forbid aggregation, so the `gupy` source stays off unless the user decides otherwise after reading `search/sources.md`.
 4. `python3 SKILL_DIR/scripts/init_workspace.py --workspace <ws> --answers answers.json`
 5. Copy the CV into `<ws>/curriculum/`, fill `curriculum/profile.md` from it, and ask whether the referees agreed to be listed.
 6. Show the created files and the filter config; offer a first scan.

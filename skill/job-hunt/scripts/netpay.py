@@ -106,7 +106,8 @@ def br_company(m, gross, export, person):
     if not r:
         return None
     best, options = r
-    a = [f"Simples Nacional, Anexo {best['anexo']} (best of III with Fator R and V)",
+    a = [f"Simples Nacional: shows the higher of Anexo III (pró-labore ≥ 28%) and Anexo V ({best['anexo']} here); both are in the detail. "
+         "Choosing the regime and pró-labore is for your accountant",
          f"accountant {acc:.0f}/month" + (f", FX/transfer spread {fx:.1%}" if export else ""),
          "profits paid out as dividends; 10% withheld above 50k/month and annual minimum tax above 600k/year (Lei 15.270/2025), without the corporate-tax credit (conservative)"]
     if export:

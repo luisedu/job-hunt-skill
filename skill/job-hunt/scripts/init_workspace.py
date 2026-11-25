@@ -29,7 +29,7 @@ answers.json (Claude collects these from the user first; see SKILL.md "First run
   "gupyTerms": []
 }
 """
-import argparse, json, os, re, sys, datetime as dt
+import argparse, json, os, re, shutil, sys, datetime as dt
 
 SKILL = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 TPL = os.path.join(SKILL, "templates")
@@ -92,7 +92,7 @@ def main():
     a.setdefault("excludedCompaniesList", "\n".join(f"- {c}" for c in a.get("excludedCompanies", [])) or "- (none yet)")
     a["filtersJson"] = filters_json(a)
 
-    created, skipped = [], []
+    created, skipped, backups = [], [], []
     for root, _, files in os.walk(TPL):
         for f in files:
             if f.endswith(".html"):
@@ -104,17 +104,25 @@ def main():
                 skipped.append(rel)
                 continue
             os.makedirs(os.path.dirname(dst), exist_ok=True)
+            if os.path.exists(dst):  # --force: never lose the user's tracker, rules or profile
+                bak = f"{dst}.bak-{dt.datetime.now():%Y%m%d-%H%M%S}"
+                shutil.copy2(dst, bak)
+                backups.append(os.path.relpath(bak, ws))
             open(dst, "w", encoding="utf-8").write(render(open(src, encoding="utf-8").read(), a))
             created.append(rel)
     for d in ("curriculum", "search/scans", "outcomes/postings"):
         os.makedirs(os.path.join(ws, d), exist_ok=True)
     gi = os.path.join(ws, ".gitignore")
-    if not os.path.exists(gi):
-        open(gi, "w").write("# personal data: never publish\n*\n")
+    lines = open(gi).read().splitlines() if os.path.exists(gi) else []
+    if "*" not in [x.strip() for x in lines]:  # the workspace is personal data: ignore everything, even in an existing repo
+        with open(gi, "a") as fh:
+            fh.write(("\n" if lines else "") + "# personal data: never publish\n*\n")
     print("workspace:", ws)
     print("created:", *created, sep="\n  ")
     if skipped:
-        print("kept existing (use --force to overwrite):", *skipped, sep="\n  ")
+        print("kept existing (use --force to overwrite; backups are made first):", *skipped, sep="\n  ")
+    if backups:
+        print("backed up before overwriting:", *backups, sep="\n  ")
     print("next: put your CV PDF in", os.path.join(ws, "curriculum"), "and ask Claude to fill curriculum/profile.md")
 
 

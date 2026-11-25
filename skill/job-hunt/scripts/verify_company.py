@@ -125,21 +125,40 @@ def cnpj_status(cnpj):
     return {"found": True, "name": d.get("razao_social"), "status": d.get("descricao_situacao_cadastral"), "opened": d.get("data_inicio_atividade")}
 
 
+def safe_host(h):
+    """Public hostnames only: no IPs, localhost or internal names (a posting must not make us probe the local network)."""
+    h = (h or "").lower().rstrip(".")
+    if not h or "." not in h or h == "localhost" or h.endswith((".local", ".internal", ".lan")):
+        return None
+    if re.fullmatch(r"[\d.]+|\[?[0-9a-f:]+\]?", h):
+        return None
+    return h
+
+
+def job_domain(company, job):
+    """The company's own domain from a job's URLs or text, accepted only when its name matches the company
+    (an unknown ATS or redirect host must never stand in for the employer). Returns (domain, source)."""
+    words = re.sub(r"[^a-z0-9 ]", "", norm(company)).split()
+    for u in job.get("urls") or [job.get("url")]:
+        h = safe_host(urlparse(u or "").hostname)
+        if h and words and not NOT_COMPANY.search(h):
+            h = h.removeprefix("www.")
+            label = h.split(".")[-2] if h.count(".") >= 1 else h
+            if words[0] in label or "".join(words) == label:
+                return h, "job link"
+    d = domain_from_text(company, job.get("text", ""))
+    return (safe_host(d), "posting text") if d and safe_host(d) else (None, None)
+
+
 def check(company, domain=None, email=None, cnpj=None, job=None, today=None, guess=True):
     """Returns {trust, verdict, signals[(points, text)], next_steps[]}."""
     today = today or dt.datetime.now(dt.timezone.utc)
     sig, nxt = [], []
     domain = (domain or "").lower().removeprefix("www.") or None
     if not domain and job:
-        for u in job.get("urls") or [job.get("url")]:
-            h = urlparse(u or "").netloc.lower().removeprefix("www.")
-            if h and not NOT_COMPANY.search(h):
-                domain = h
-                break
-    if not domain and job:
-        domain = domain_from_text(company, job.get("text", ""))
+        domain, how = job_domain(company, job)
         if domain:
-            sig.append((0, f"website from the posting text: {domain}"))
+            sig.append((0, f"website from the {how}: {domain} (its name matches the company)"))
     guessed = False
     if not domain and guess:
         domain = guess_domain(company)
@@ -260,7 +279,8 @@ def main():
     else:
         sys.exit("give --company or --results")
     for company, domain, email, cnpj, job in todo:
-        key = (domain or "") + "|" + norm(company)
+        derived = domain or (job_domain(company, job)[0] if job else None)
+        key = (derived or "") + "|" + norm(company)  # a new apply domain under a known name gets its own check
         r = None if a.refresh or email or cnpj else cache.get(key, today)
         if not r:
             r = check(company, domain, email, cnpj, job, today)
