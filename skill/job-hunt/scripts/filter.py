@@ -62,10 +62,15 @@ def fx_table(cfg):
     try:
         if os.environ.get("JOB_HUNT_OFFLINE"):
             raise RuntimeError("offline")
-        out = subprocess.run(["curl", "-s", "-L", "-m", "15", f"https://api.frankfurter.app/latest?from={home}"], capture_output=True, text=True).stdout
+        out = subprocess.run(["curl", "-s", "-L", "--proto", "=https", "--proto-redir", "=https", "--max-redirs", "3", "-m", "15", "--",
+                              f"https://api.frankfurter.app/latest?from={home}"], capture_output=True, text=True).stdout
         rates = json.loads(out)["rates"]
     except Exception:
         rates = cfg["fallbackFxPerCurrency"]
+        if not os.environ.get("JOB_HUNT_OFFLINE"):
+            have = ", ".join(sorted(rates)) or "none"
+            print(f"WARNING: live exchange rates unavailable; using fallbackFxPerCurrency from filters.md ({have}). "
+                  "Pay in other currencies can't be converted: those jobs show 'salary not listed' and skip the pay floor.", file=sys.stderr)
     tbl = {k.upper(): 1 / v for k, v in rates.items() if v}
     tbl[home] = 1.0
     return tbl
@@ -258,9 +263,17 @@ def classify(j, cfg, R, fx, today):
     return ("excluded" if reasons else "keep"), reasons, flags
 
 
+def safe_search(pattern, text):
+    """fit / penalizeKeywords accept regexes ("c\\+\\+", "vis[ãa]o"); an invalid one like "c++" is matched literally instead of crashing."""
+    try:
+        return re.search(pattern, text, re.I)
+    except re.error:
+        return re.search(re.escape(pattern), text, re.I)
+
+
 def fit_score(j, cfg, R):
     t = (j["title"] + " " + j["text"]).lower()
-    s = sum(w for p, w in cfg["fit"].items() if re.search(p, t, re.I))
+    s = sum(w for p, w in cfg["fit"].items() if safe_search(p, t))
     if R["title_kw"].search(j["title"]):
         s += 4
     if R["allowed"].search(j["loc"] + " " + j["text"][:3000]):
@@ -268,14 +281,18 @@ def fit_score(j, cfg, R):
     pay = j.get("pay_net") if cfg["pay"].get("floorBasis") == "net" and j.get("pay_net") else j.get("pay_monthly")
     if pay and cfg["pay"]["floorMonthly"] and pay[1] >= cfg["pay"]["floorMonthly"]:
         s += 2
-    s -= 2 * sum(1 for p in cfg["penalizeKeywords"] if re.search(p, t, re.I))
+    s -= 2 * sum(1 for p in cfg["penalizeKeywords"] if safe_search(p, t))
     return s
 
 
 def run(ws, raw_path=None, today=None):
     cfg = load_config(ws)
     scans = os.path.join(ws, "search", "scans")
-    raw_path = raw_path or sorted(glob.glob(os.path.join(scans, "raw-*.json")))[-1]
+    if not raw_path:  # newest day; the main raw-DATE.json wins over a smaller same-day raw-DATE-HHMM.json
+        files = glob.glob(os.path.join(scans, "raw-????-??-??*.json"))
+        if not files:
+            raise SystemExit(f"no raw scan in {scans}: run scan.py first")
+        raw_path = max(files, key=lambda f: (os.path.basename(f)[4:14], os.path.basename(f) == f"raw-{os.path.basename(f)[4:14]}.json"))
     with open(raw_path) as fh:
         raw = json.load(fh)
     today = today or dt.datetime.now(dt.timezone.utc)
@@ -329,7 +346,10 @@ def run(ws, raw_path=None, today=None):
 
     keep = sorted([j for j in final if j["status"] == "keep"], key=lambda x: -x["fit"])
     exc = [j for j in final if j["status"] == "excluded"]
-    res_path = raw_path.replace("raw-", "results-")
+    base = os.path.basename(raw_path)
+    res_path = os.path.join(os.path.dirname(raw_path), ("results-" + base[4:]) if base.startswith("raw-") else ("results-" + base))
+    if os.path.abspath(res_path) == os.path.abspath(raw_path):
+        raise SystemExit("refusing to overwrite the raw scan with results")
     with open(res_path, "w") as fh:
         json.dump({"keep": keep, "excluded": exc}, fh, ensure_ascii=False, indent=1)
     summary = collections.Counter(re.sub(r"\d[\d,]*|\(.*|:.*", "#", j["reasons"][0])[:40] for j in exc)

@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.2.1 (2026-11-25)
+- **Source terms:** Gupy's candidate terms forbid aggregating postings. The source is no longer recommended, stays off by default and warns on every scan if enabled. PerfectRole: terms not found, so check them before enabling.
+- **Policy wording:** net pay is an AI-assisted estimate from a fixed formula; the tax regime and what to report are for an accountant; eligibility reads the posting, not legal advice; company verdicts are private signals, never published.
+- **README:** "Disclaimer and acceptable use" (for job seekers, not for screening candidates).
+- **Security (sharp-edges review):**
+  - The company check only trusts domains whose name matches the company, never local or IP hosts, and keys its cache by domain.
+  - `init --force` backs files up first; the workspace `.gitignore` always denies everything.
+  - `redact` is value-only, backed up, atomic and covers saved postings; `export` drops free text.
+  - Exchange-rate fallback warns; invalid `fit` regexes match literally; results never overwrite the input; source errors are reported; a small same-day scan no longer replaces a good one; control and bidi characters are stripped from untrusted text; saved postings are labelled untrusted.
+- **CI:** bandit security lint, with the known items documented in `.bandit.yml`.
+
 ## 0.2.0 (2026-11-25)
 - **Install as a plugin:** `.claude-plugin/` manifest and marketplace.
 - **Sources:** companies' own job boards (Greenhouse, Ashby, Lever, Workable) with `--probe-ats`; PerfectRole (sitemaps + JSON-LD, robots-compliant); HN "Who is hiring" thread found automatically; Remotive cached and capped at 4 requests a day (their terms).

@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-"""Can this employer hire the user where they live? Advisory verdicts from the posting text; no network.
+"""Can this employer hire the user where they live? Advisory verdicts that read the posting's text; no network.
+Not legal or immigration advice: the user confirms work rights with the employer.
 
 verdict:
   eligible    the posting says the user's country/region (or worldwide) is fine
@@ -101,24 +102,24 @@ def eligibility(job, person, today=None):
             reasons.append(f"residence in {place.strip()}: you live there")
         elif may_work & set(cs):
             verdict = "relocation"
-            reasons.append(f"requires residence in {place.strip()}: your citizenship allows it, but you'd have to move")
+            reasons.append(f"the posting requires residence in {place.strip()}: your citizenship may allow it (confirm), but you'd have to move")
         else:
             verdict = "no"
-            reasons.append(f"requires residence in {place.strip()}")
+            reasons.append(f"the posting requires residence in {place.strip()}")
     for m in RIGHT_TO_WORK.finditer(text):
         place = next(g for g in m.groups() if g)
         cs = countries(place)
         if not cs:
             continue
         if may_work & set(cs):
-            reasons.append(f"right to work in {place.strip()}: you have it")
+            reasons.append(f"the posting asks for the right to work in {place.strip()}: your citizenship suggests you have it (confirm with the employer)")
             if res not in cs and verdict is None:
                 verdict = "relocation" if not WORLD.search(loc) else None
                 if verdict:
                     reasons.append("…but no sign they hire people living elsewhere")
         else:
             verdict = "no"
-            reasons.append(f"requires the right to work in {place.strip()}")
+            reasons.append(f"the posting asks for the right to work in {place.strip()}")
     if US_PAYROLL.search(text) and res != "US" and "US" not in cits:
         if WORLD.search(loc) and verdict in (None, "likely", "eligible"):
             verdict = "likely"  # worldwide role that also lists US benefits: non-US hires are often contractors

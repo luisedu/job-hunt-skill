@@ -13,7 +13,7 @@ Normalized job: {source, sid, title, company, loc, url, text, posted (ISO-8601 U
 sal: {min, max, cur, per} | {text} | null
 Only public APIs / RSS feeds are used. No login-walled sites are scraped.
 """
-import argparse, datetime as dt, html, json, os, re, stat, subprocess, sys, time, urllib.request
+import argparse, datetime as dt, html, json, os, re, stat, subprocess, sys, time, urllib.error, urllib.request
 from concurrent.futures import ThreadPoolExecutor
 from urllib.parse import quote
 
@@ -61,8 +61,12 @@ def getj(url, **kw):
         return None
 
 
+CONTROL = re.compile(r"[\x00-\x08\x0b-\x1f\x7f-\x9f\u200b-\u200f\u202a-\u202e\u2066-\u2069]")  # escapes, bidi/zero-width tricks
+
+
 def strip(s):
-    return re.sub(r"\s+", " ", html.unescape(re.sub(r"<[^>]+>", " ", str(s or "")))).strip()
+    """HTML to plain text for untrusted fields; drops control, bidi and zero-width characters (terminal/link spoofing)."""
+    return re.sub(r"\s+", " ", CONTROL.sub(" ", html.unescape(re.sub(r"<[^>]+>", " ", str(s or ""))))).strip()
 
 
 def pdate(s):
@@ -93,7 +97,7 @@ def rr_post(keyf, body):
     key = open(keyf).read().strip()
     req = urllib.request.Request("https://www.remoterocketship.com/api/openclaw/jobs/", data=body, method="POST",
                                  headers={"Authorization": "Bearer " + key, "Content-Type": "application/json", "User-Agent": UA})
-    with urllib.request.urlopen(req, timeout=60) as r:
+    with urllib.request.urlopen(req, timeout=60) as r:  # fixed https URL above, no user-controlled scheme  # nosec B310
         return json.loads(r.read().decode())
 
 
@@ -112,7 +116,12 @@ def src_remoterocketship(cfg):
             body = json.dumps({"filters": f, "includeJobDescription": True}).encode()
             try:
                 jobs = rr_post(keyf, body).get("jobOpenings") or []
-            except Exception:
+            except urllib.error.HTTPError as e:
+                hint = {401: "API key rejected (check the key file)", 403: "membership inactive", 429: "daily limit reached"}.get(e.code, "")
+                print(f"remoterocketship: HTTP {e.code} {hint}; stopping this source", file=sys.stderr)
+                return out
+            except Exception as e:
+                print(f"remoterocketship: {type(e).__name__}; retrying", file=sys.stderr)
                 time.sleep(3)
                 continue
             for j in jobs:
@@ -230,8 +239,15 @@ def src_getonbrd(cfg):
     return out
 
 
+GUPY_TERMS_WARNING = ("gupy: Gupy's terms of use for candidates forbid aggregating, copying or duplicating parts of the platform, "
+                      "including job postings. This source is on because you enabled it; you are responsible for that choice. "
+                      "Gupy jobs also appear via other sources (e.g. Himalayas, Remote Rocketship).")
+
+
 def src_gupy(cfg):
-    """Brazil only. Parses __NEXT_DATA__ from the public search page (the JSON APIs return 404)."""
+    """Brazil only, OFF by default and never recommended: Gupy's candidate terms forbid aggregating or copying postings.
+    Parses __NEXT_DATA__ from the public search page (the JSON APIs return 404)."""
+    print(GUPY_TERMS_WARNING, file=sys.stderr)
     out = []
     for t in cfg.get("gupyTerms") or cfg["queries"]:
         for off in range(0, 120, 12):
@@ -293,7 +309,7 @@ def src_perfectrole(cfg):
         for m in re.findall(r'<script[^>]*application/ld\+json[^>]*>(.*?)</script>', h, re.S):
             try:
                 d = json.loads(m)
-            except Exception:
+            except Exception:  # skip malformed JSON-LD blocks on third-party pages  # nosec B112
                 continue
             for jp in (d if isinstance(d, list) else [d]):
                 if not isinstance(jp, dict) or jp.get("@type") != "JobPosting":
@@ -422,10 +438,18 @@ def main():
                 print("ERR", s, repr(e), file=sys.stderr)
                 r = []
             stats[s] = len(r)
+            if not r:
+                print(f"{s}: 0 jobs (network problem, key, rate limit or no match?)", file=sys.stderr)
             allj += r
     out = os.path.join(ws, "search", "scans")
     os.makedirs(out, exist_ok=True)
     fn = os.path.join(out, f"raw-{dt.date.today().isoformat()}.json")
+    if os.path.exists(fn):  # never replace a good same-day scan with an empty or much smaller one
+        prev = len(json.load(open(fn)))
+        if len(allj) < prev / 2:
+            fn = fn.replace(".json", f"-{dt.datetime.now():%H%M}.json")
+            print(f"this scan ({len(allj)} jobs) is much smaller than today's earlier one ({prev}); kept that and saved this as {os.path.basename(fn)}",
+                  file=sys.stderr)
     json.dump(allj, open(fn, "w"))
     print(json.dumps(stats), "total", len(allj))
     print("saved", fn)

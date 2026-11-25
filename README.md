@@ -135,6 +135,15 @@ What leaves your machine:
 
 Every report shows each job's source and original link: RemoteOK, Remotive and Jobicy require that attribution. Job data is for your personal search only, so don't republish it. Remotive asks for at most 4 API requests a day, so `scan.py` fetches its feed once and caches it for 6 hours. Only public APIs and RSS feeds are used, including the public job-board APIs of Greenhouse, Ashby, Lever and Workable for the companies you list. LinkedIn, Indeed, Glassdoor and Wellfound are intentionally not scraped: search those manually. Remote Rocketship needs your own API key (`~/.config/remoterocketship/api-key`). Job-board endpoints change, so the notes are in `templates/search/sources.md` and PRs are welcome.
 
+## Disclaimer and acceptable use
+
+- **For job seekers, about their own search.** Don't use it to screen, rank or reject candidates. That is a high-risk use under Anthropic's Usage Policy and under laws such as the EU AI Act, with obligations this project doesn't provide.
+- **Estimates, not advice.** Net pay is an AI-assisted estimate from a fixed formula, for comparing offers. It's not tax, legal or immigration advice: decide tax structure with an accountant, and confirm work rights with the employer.
+- **Company checks are signals, not accusations.** A low score means public signals couldn't confirm the company. Keep results private and don't publish them as facts about a company.
+- **Site terms are yours to respect.** The scripts use public APIs and pages whose terms allow it, show attribution and respect rate limits. Sources whose terms forbid aggregation (e.g. Gupy) are off by default; enabling one is your decision.
+- **Honest applications.** The skill never invents experience or adds hidden keywords, and you submit every application yourself.
+- Provided "as is" under the MIT license, without warranty.
+
 ## Tests
 
 ```bash
