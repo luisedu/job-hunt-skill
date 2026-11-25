@@ -33,10 +33,15 @@ It **never applies, emails or messages anyone for you.** You stay in control of 
 
 ![Demo: scan and filter for a frontend engineer in Portugal](docs/demo.svg)
 
-<sub>Real run with the example profile in `examples/`: 3,381 postings from 8 boards → 48 kept. Onsite jobs and "remote" roles restricted to the US, India and elsewhere were removed automatically.</sub>
+<sub>Real run (2026-11-25) with `examples/answers-frontend-portugal.json`: 3,165 postings from 8 boards → 243 relevant → 50 kept. Onsite jobs and "remote" roles restricted to the US, India and elsewhere were removed automatically. Rebuild with `docs/make_demo.py`. More example profiles: a data engineer in Argentina and a product designer in Spain.</sub>
 
 ## Install
 
+As a Claude Code plugin (recommended; updates with `/plugin update`):
+```text
+/plugin install job-hunt --marketplace luisedu/job-hunt-skill
+```
+Or from a clone:
 ```bash
 git clone https://github.com/luisedu/job-hunt-skill
 ln -s "$PWD/job-hunt-skill/skill/job-hunt" ~/.claude/skills/job-hunt

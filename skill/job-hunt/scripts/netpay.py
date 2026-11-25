@@ -114,6 +114,15 @@ def br_company(m, gross, export, person):
     return {"net": best["net"], "basis": "contractor" if export else "pj_local", "detail": {"best": best, "options": options}, "assumptions": a}
 
 
+# Country registry: netpay/<CC>.json holds the data (with sources and validity dates); these functions
+# hold the rules. A country needs at least "employee" (local payroll) or "company" (own company / contractor);
+# anything missing falls back to the user's flat person.netRates. Guide: docs/netpay-countries.md.
+COUNTRIES = {
+    "BR": {"employee": br_clt, "company": br_company,
+           "salaries_per_year": lambda m: m["clt"]["salariesPerYear"] + m["clt"]["vacationBonus"]},
+}
+
+
 # ------------------------------------------------------------------ generic
 def flat(gross, contract, person):
     rates = person.get("netRates") or {}
@@ -132,26 +141,27 @@ def net_monthly(gross, contract, person, months_basis=None):
         return None
     if contract == "employee_foreign":
         return {"net": None, "basis": contract, "detail": {}, "assumptions": ["foreign payroll: usually requires living there; no estimate"]}
-    if contract == "contractor" and months_basis == "rate":
+    if contract in ("contractor", "pj_local") and months_basis == "rate":  # own company: unpaid time off
         bm = person.get("contractorBillableMonths", 11)
         gross = gross * bm / 12
     m = load_model(person.get("netModel"))
+    funcs = COUNTRIES.get((m or {}).get("country"), {})
     out = None
-    if m:
-        if contract in ("employee_local", "eor"):
-            spread = (m["clt"]["salariesPerYear"] + m["clt"]["vacationBonus"]) / 12
-            out = br_clt(m, gross / spread if months_basis == "year" else gross)
-            if months_basis == "year":
-                out["assumptions"].append("annual amount treated as total pay: monthly salary = annual / 13.33")
+    if m and funcs:
+        if contract in ("employee_local", "eor") and funcs.get("employee"):
+            spread = funcs.get("salaries_per_year", lambda _m: 12)(m) / 12
+            out = funcs["employee"](m, gross / spread if months_basis == "year" else gross)
+            if months_basis == "year" and spread != 1:
+                out["assumptions"].append(f"annual amount treated as total pay: monthly salary = annual / {spread * 12:.2f}")
             if contract == "eor":
                 out["assumptions"].append("assumes the posted pay becomes your local gross salary; employers often set a lower local salary")
-        elif contract in ("pj_local", "contractor"):
-            out = br_company(m, gross, contract == "contractor", person)
+        elif contract in ("pj_local", "contractor") and funcs.get("company"):
+            out = funcs["company"](m, gross, contract == "contractor", person)
         if out:
             out["assumptions"].append(f"{m['country']} rules valid {m['validFrom']}..{m['validUntil']}; estimate, not tax advice")
     if out is None:
         out = flat(gross, contract, person)
-    if out and contract == "contractor" and months_basis == "rate":
+    if out and contract in ("contractor", "pj_local") and months_basis == "rate":
         out["assumptions"].append(f"{person.get('contractorBillableMonths', 11)} billable months a year")
     return out
 
@@ -165,7 +175,8 @@ def scenarios(gross, contract, currency_is_home, person, months_basis=None):
     else:
         cs = ["contractor", "eor"]
     allowed = person.get("contracts") or []
-    cs = [c for c in cs if not allowed or c in allowed or c == contract] or cs
+    if allowed:  # only contracts the user accepts; a known contract type is always shown
+        cs = [c for c in cs if c in allowed or c == contract] or [c for c in allowed if c != "employee_foreign"] or cs
     res = {c: net_monthly(gross, c, person, months_basis) for c in cs}
     return {c: r for c, r in res.items() if r}
 

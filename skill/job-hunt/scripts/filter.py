@@ -51,7 +51,9 @@ def words_re(words):
 def norm_title(s):
     s = (s or "").lower()
     s = re.sub(r"job id:?\s*\S+|\b[a-z]{2}\d{4,}\b", " ", s)
-    s = re.sub(r"\b(senior|sr\.?|mid[- ]level|staff|principal|lead|ii+|iv|remote)\b", " ", s)
+    # drop location/marker parentheses like "(Remote)", "(m/f/d)", "(US only)"; keep meaningful ones like "(Vision)"
+    s = re.sub(r"\((?:[^)]*\b(?:remote|remoto|hybrid|h[ií]brido|on-?site|only|position|part|full)\b[^)]*|[mfwdh]\s*/\s*[mfwdh](?:\s*/\s*[mfwdhx])?|latam|emea|apac|us|usa|uk|eu|europe)\)", " ", s)
+    s = re.sub(r"\b(senior|sr\.?|s[êe]nior|pleno|semi[- ]?senior|mid[- ]level|staff|principal|lead|ii+|iv|i|remote|remoto|remota)\b", " ", s)
     return re.sub(r"[^a-z0-9à-ú]+", " ", s).strip()
 
 
@@ -84,7 +86,16 @@ def monthly_pay(j, cfg, fx):
             if v > 5:
                 vals.append(v)
         per = "hour" if re.search(r"hour|/h\b|hr", txt, re.I) else "month" if re.search(r"month|/mo", txt, re.I) else ""
-    elif s:
+    elif not s:  # no salary field: look for an amount in the home currency in the text (e.g. Brazilian "R$ 18.000")
+        home = cfg["profile"]["currency"].upper()
+        sym = {"BRL": r"R\$", "EUR": r"€", "GBP": r"£"}.get(home)
+        m = re.search(sym + r"\s?(\d{1,3}(?:[.,]\d{3})+|\d{4,6})(?:[.,]\d{2})?(?!\d)", j.get("text", "")) if sym else None
+        floor = cfg["pay"]["floorMonthly"] or 0
+        if m:
+            v = float(re.sub(r"[.,]", "", m.group(1)))
+            if (floor * 0.1 if floor else 500) <= v <= (floor * 20 if floor else 10 ** 6):
+                vals, cur, per = [v], home, "month"
+    if s and "text" not in s:
         for x in (s.get("min"), s.get("max")):
             try:
                 if x and float(x) > 0:
@@ -155,7 +166,6 @@ def classify(j, cfg, R, fx, today):
         tw = set(re.sub(r"[^a-z0-9 ]", " ", title.lower()).split())
         locl = " ".join(w for w in locl.replace("slug:", "").split() if w not in tw and w != "remote" and not w.isdigit())
         j["loc"] = "location: " + (locl or "?")
-    remote_signal = re.search(r"remote|remoto|anywhere|worldwide|unrestricted", loc + " " + head[:600], re.I)
     if j["source"] == "Gupy":
         wp = loc.split(" ")[0]
         if wp != "remote" and L["remoteOnly"] and not R["hybrid_city"].search(loc):
@@ -165,7 +175,7 @@ def classify(j, cfg, R, fx, today):
     elif L["remoteOnly"] and j["source"].startswith("HN") and not re.search("remote", loc, re.I):
         reasons.append("not remote")
     stated = locl.strip(" ,;-") not in ("", "?", "unrestricted") and j["source"] not in ("HN WhoIsHiring", "Gupy")
-    if stated and not GLOBAL.search(locl) and not R["allowed"].search(locl):
+    if stated and not GLOBAL.search(locl) and not R["allowed"].search(locl) and not R["hybrid_city"].search(locl):
         reasons.append("restricted to " + locl.strip()[:40])
     m = RESTRICT.search(text)
     if m and not GLOBAL.search(locl) and not R["allowed"].search(locl):

@@ -1,0 +1,22 @@
+{
+  "name": "Mateo Example",
+  "headline": "Senior Data Engineer (Python, Spark, Airflow)",
+  "homeCountry": "Argentina",
+  "homeCity": "Córdoba",
+  "currency": "USD",
+  "languages": "Spanish (native), English (advanced)",
+  "targetRoles": "Senior Data Engineer, remote for US/EU companies as a contractor",
+  "seniority": ["senior"],
+  "queries": ["data engineer", "analytics engineer", "spark"],
+  "titleKeywords": ["data engineer", "analytics engineer", "data platform", "etl"],
+  "textKeywords": ["spark", "airflow", "dbt", "kafka", "snowflake", "bigquery", "python", "sql"],
+  "allowedRegions": ["argentina", "latam", "latin america", "south america", "americas"],
+  "remoteOnly": true,
+  "floorMonthly": 5000,
+  "targetRate": "USD 40/h contractor",
+  "excludedCompanies": [],
+  "fit": {"spark": 2, "airflow": 2, "dbt": 1, "kafka": 1, "python": 1},
+  "sources": {"getonbrd": true, "gupy": false, "arbeitnow": false},
+  "residence": "AR", "citizenships": ["AR"], "timezone": "America/Argentina/Cordoba", "minOverlapHours": 4,
+  "contracts": ["contractor"], "netRates": {"contractor": 0.82}, "contractorBillableMonths": 11
+}

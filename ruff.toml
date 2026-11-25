@@ -1,0 +1,6 @@
+# Lint for real errors only (pyflakes + syntax); style is free.
+line-length = 160
+target-version = "py311"
+[lint]
+select = ["E9", "F"]
+ignore = ["E731"]

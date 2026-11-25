@@ -29,7 +29,7 @@ answers.json (Claude collects these from the user first; see SKILL.md "First run
   "gupyTerms": []
 }
 """
-import argparse, json, os, re, shutil, sys, datetime as dt
+import argparse, json, os, re, sys, datetime as dt
 
 SKILL = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 TPL = os.path.join(SKILL, "templates")
@@ -56,6 +56,8 @@ def filters_json(a):
             "textKeywords": a["textKeywords"],
             "minTextHits": a.get("minTextHits", 2),
             "excludeTitleUnlessKeyword": a.get("excludeTitleUnlessKeyword", ["llm", "genai", "agentic", "prompt"]),
+            **({"titleRoleWords": a["titleRoleWords"]} if a.get("titleRoleWords") else {}),
+            **({"excludeTitle": a["excludeTitle"]} if a.get("excludeTitle") else {}),
         },
         "location": {"remoteOnly": a.get("remoteOnly", True), "allowed": a["allowedRegions"],
                      "hybridOkCities": a.get("hybridOkCities", []), "acceptUnstated": True},

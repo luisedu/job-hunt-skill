@@ -270,6 +270,54 @@ def src_hn(cfg):
     return out
 
 
+def slug_re(words):
+    parts = [re.sub(r"[^a-z0-9]+", "-", w.lower()).strip("-") for w in words if w]
+    return re.compile("|".join(r"(?:^|-)" + re.escape(p) + r"(?:-|$)" for p in parts if p) or r"$^", re.I)
+
+
+def src_perfectrole(cfg):
+    """perfectrole.app: robots.txt allows the job sitemaps and /jobs/<slug> pages (not /api/ or query URLs).
+    Keep slugs that contain a target title keyword or query, then read each page's JSON-LD JobPosting (~1 request/s)."""
+    keep = slug_re(cfg["roles"]["titleKeywords"] + cfg["queries"])
+    drop = slug_re(cfg["roles"]["excludeTitle"])
+    urls = []
+    for i in range(10):
+        locs = re.findall(r"<loc>([^<]+)</loc>", get(f"https://perfectrole.app/sitemaps/jobs-{i}.xml", timeout=60))
+        if not locs:
+            break
+        urls += [u for u in locs if keep.search(u.rsplit("/", 1)[-1]) and not drop.search(u.rsplit("/", 1)[-1])]
+    out = []
+    for u in urls[: (cfg.get("perfectRole") or {}).get("maxPages", 400)]:
+        h = get(u, timeout=30)
+        time.sleep(0.8)
+        for m in re.findall(r'<script[^>]*application/ld\+json[^>]*>(.*?)</script>', h, re.S):
+            try:
+                d = json.loads(m)
+            except Exception:
+                continue
+            for jp in (d if isinstance(d, list) else [d]):
+                if not isinstance(jp, dict) or jp.get("@type") != "JobPosting":
+                    continue
+                jl = jp.get("jobLocation") or []
+                jl = jl if isinstance(jl, list) else [jl]
+                places = []
+                for l in jl:
+                    a = (l or {}).get("address") or {}
+                    places.append(", ".join(x for x in (a.get("addressLocality"), a.get("addressRegion"), a.get("addressCountry")) if x))
+                arl = jp.get("applicantLocationRequirements") or []
+                arl = arl if isinstance(arl, list) else [arl]
+                req = ", ".join((r or {}).get("name", "") for r in arl if isinstance(r, dict))
+                remote = jp.get("jobLocationType") == "TELECOMMUTE"
+                loc = ("remote " if remote else "onsite ") + (req or "; ".join(p for p in places if p))
+                bs = jp.get("baseSalary") or {}
+                bv = bs.get("value") or {}
+                mx = bv.get("maxValue") or bv.get("value")
+                sal = dict(min=bv.get("minValue"), max=mx, cur=bs.get("currency"), per=str(bv.get("unitText") or "").lower()) if mx else None
+                out.append(job("PerfectRole", u.rsplit("/", 1)[-1].split("-")[0], jp.get("title"), (jp.get("hiringOrganization") or {}).get("name"),
+                               loc, u, jp.get("description"), pdate(jp.get("datePosted")), sal, {"validThrough": jp.get("validThrough")}))
+    return out
+
+
 ATS_APIS = {
     "greenhouse": "https://boards-api.greenhouse.io/v1/boards/{}/jobs?content=true",
     "ashby": "https://api.ashbyhq.com/posting-api/job-board/{}?includeCompensation=true",
