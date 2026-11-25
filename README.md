@@ -1,10 +1,10 @@
 # job-hunt: a Claude Code skill for an honest, low-noise job search
 
-[![tests](https://github.com/luisedu/job-hunt-skill/actions/workflows/tests.yml/badge.svg)](https://github.com/luisedu/job-hunt-skill/actions/workflows/tests.yml)
+[![tests](https://github.com/luisedu/job-hunt-skill/actions/workflows/tests.yml/badge.svg)](https://github.com/luisedu/job-hunt-skill/actions/workflows/tests.yml) ![status: beta](https://img.shields.io/badge/status-beta-orange)
 
 A [Claude Code](https://claude.com/claude-code) skill that runs your job search from a local folder of Markdown files:
 
-- **Scans 11 public job boards** (RemoteOK, Remotive, Himalayas, Jobicy, We Work Remotely, Working Nomads, HN "Who is hiring", Arbeitnow, GetOnBoard, Gupy, and optionally Remote Rocketship).
+- **Scans public job boards** (RemoteOK, Remotive, Himalayas, Jobicy, We Work Remotely, Working Nomads, HN "Who is hiring", Arbeitnow, GetOnBoard, and optionally Remote Rocketship with your own key).
 - **Watches companies' own job boards** (Greenhouse, Ashby, Lever, Workable) for the companies you list, so you see openings the day they are posted. `--probe-ats` finds each company's board.
 - **Answers "can they hire me, and what will I take home?"** Each job gets an eligibility verdict that tells *residence* apart from *right to work* (a passport isn't an address), detects the contract type (local payroll, PJ, contractor, employer of record) and time-zone overlap, and estimates **net monthly pay** per contract. Brazil (CLT, PJ, export of services) is the first country module; other countries use your own flat rates.
 - **Checks whether a company is real:** domain age, mail setup, website, public job board, recruiter email, LEI and the Brazilian CNPJ registry, combined into an explainable trust score. It never says "safe".
@@ -48,7 +48,18 @@ git clone https://github.com/luisedu/job-hunt-skill
 ln -s "$PWD/job-hunt-skill/skill/job-hunt" ~/.claude/skills/job-hunt
 ```
 
-Requirements: Python 3.11+, `curl`, `pdftotext` (poppler-utils) and LibreOffice (`soffice`) for PDF output.
+Requirements: Python 3.11+, `curl`, poppler (`pdftotext`, `pdfinfo`, `pdffonts`, `pdftoppm`) and LibreOffice for PDF output.
+
+## Status: beta
+
+Used daily for one real search (a remote Computer Vision engineer in Brazil, on Linux) and covered by offline tests for example profiles in Portugal, Spain and Argentina. Expect rough edges elsewhere, and please [open an issue](https://github.com/luisedu/job-hunt-skill/issues/new/choose).
+
+Known limitations:
+- **Tested on Linux only.** macOS and Windows should work (the scripts look for LibreOffice in its usual places there), but nobody has confirmed it yet.
+- **Net pay:** only Brazil has a real tax module (CLT, PJ, export of services). Other countries use the flat net rates you set in `filters.md` → `person.netRates`: a rough guide, not a calculation. Adding your country: [docs/netpay-countries.md](docs/netpay-countries.md).
+- **Mostly remote jobs.** The built-in boards list remote work. For hybrid or on-site roles, add local companies' job boards (`atsBoards`) and search LinkedIn yourself.
+- **Job boards change without notice.** When a source returns 0 jobs, the scan says so; check `search/sources.md` and report it.
+- **No login-walled sites:** LinkedIn, Indeed, Glassdoor and Wellfound are searched by you, by design.
 
 ## Use
 

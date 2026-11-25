@@ -99,9 +99,13 @@ def getj(url, **kw):
 CONTROL = re.compile(r"[\x00-\x08\x0b-\x1f\x7f-\x9f\u200b-\u200f\u202a-\u202e\u2066-\u2069]")  # escapes, bidi/zero-width tricks
 
 
+NONTEXT = re.compile(r"<(script|style|noscript|svg|head|nav|footer)\b.*?</\1\s*>|<!--.*?-->", re.I | re.S)  # code, styling, page chrome
+
+
 def strip(s):
     """HTML to plain text for untrusted fields; drops control, bidi and zero-width characters (terminal/link spoofing)."""
-    return re.sub(r"\s+", " ", CONTROL.sub(" ", html.unescape(re.sub(r"<[^>]+>", " ", str(s or ""))))).strip()
+    s = NONTEXT.sub(" ", str(s or ""))
+    return re.sub(r"\s+", " ", CONTROL.sub(" ", html.unescape(re.sub(r"<[^>]+>", " ", s)))).strip()
 
 
 def pdate(s):
@@ -475,7 +479,8 @@ def main():
     ws = os.path.abspath(os.path.expanduser(a.workspace))
     cfg = load_config(ws)
     cfg["_workspace"] = ws
-    enabled = [s for s, on in cfg["sources"].items() if on and s in SOURCES]
+    enabled = [s for s, on in cfg["sources"].items() if on and s in SOURCES
+               and (s != "ats" or any(cfg["atsBoards"].values()))]  # no company boards listed yet: nothing to scan
     if a.only:
         enabled = [s.strip() for s in a.only.split(",") if s.strip()]
         bad = [s for s in enabled if s not in SOURCES]

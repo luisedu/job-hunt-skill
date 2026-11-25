@@ -162,6 +162,10 @@ class Fetching(unittest.TestCase):
         self.assertEqual(S.safe_url("file:///etc/passwd"), "")
         self.assertEqual(S.safe_url("https://a.com/x‮"), "https://a.com/x")
 
+    def test_strip_drops_code_and_styling(self):
+        page = "<head><title>x</title><style>.a{display:none}</style></head><body><nav>Jobs</nav><script>var k=1;</script><p>Python &amp; Go</p></body>"
+        self.assertEqual(S.strip(page), "Python & Go")
+
     def test_private_hosts_refused(self):
         for u in ("http://localhost:8080/", "http://127.0.0.1/", "http://169.254.169.254/latest", "http://10.0.0.1/", "ftp://example.com/"):
             self.assertEqual(S.fetch_public(u)[0], 0, u)
@@ -208,9 +212,25 @@ class FirstRun(unittest.TestCase):
             with open(os.path.join(ws, "CLAUDE.md")) as f:
                 md = f.read()
             self.assertIn(os.path.join(ROOT, "skill", "job-hunt"), md)
-            self.assertNotIn("SKILL_DIR", md)
+            self.assertIn("SKILL_DIR = `", md)
         finally:
             shutil.rmtree(os.path.dirname(ws))
+
+    def test_plugin_install_points_to_the_skill_not_a_versioned_path(self):
+        d = tempfile.mkdtemp(prefix="jh-plug-")
+        try:
+            skill = os.path.join(d, "plugins", "cache", "job-hunt-skill", "job-hunt", "9.9.9", "skill", "job-hunt")
+            shutil.copytree(os.path.join(ROOT, "skill", "job-hunt"), skill, ignore=shutil.ignore_patterns("__pycache__"))
+            ws = os.path.join(d, "ws")
+            r = subprocess.run([sys.executable, os.path.join(skill, "scripts", "init_workspace.py"), "--workspace", ws, "--answers", EXAMPLE],
+                               capture_output=True, text=True)
+            self.assertEqual(r.returncode, 0, r.stderr)
+            with open(os.path.join(ws, "CLAUDE.md")) as f:
+                md = f.read()
+            self.assertIn("installed `job-hunt` plugin", md)
+            self.assertNotIn("9.9.9", md)
+        finally:
+            shutil.rmtree(d)
 
     def test_bad_timezone_rejected(self):
         with open(EXAMPLE) as f:

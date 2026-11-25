@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.2.3 (2026-11-25)
+Beta readiness, from a clean install of the plugin and a live first run.
+- **Plugin installs:** the workspace `CLAUDE.md` names the installed skill instead of its versioned cache folder, which changes on every `/plugin update`.
+- **ATS check on a URL:** script, style, navigation and footer blocks are dropped before reading, so page CSS no longer shows up as keywords or screening topics; the report notes that a saved posting text gives exact results.
+- **Scan:** the company-boards source is skipped while `atsBoards` is empty, instead of a false "0 jobs" warning.
+- **Wording:** `offers.py` says "local-employee gross" (not the Brazil-only "CLT"); posting-text restrictions are grouped in the exclusion summary.
+- **README:** beta status and known limitations. **GitHub:** issue templates for broken sources, country net-pay modules and bugs, each with a public-data warning.
+
 ## 0.2.2 (2026-11-25)
 - **Security:**
   - The Remote Rocketship API key never follows a redirect (urllib would have copied it to the new host).
