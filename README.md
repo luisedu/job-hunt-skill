@@ -51,7 +51,8 @@ JobHunt/
 ├── search/filters.md      tunable filters (a JSON block the scripts read)
 ├── search/sources.md      job-board notes
 ├── search/scan-log.md     scan history
-├── interview/             stories, salary notes, company prep
+├── interview/             stories + numbers bank, AI-interview rules, salary notes, company prep
+├── outcomes/              event log (outcomes.jsonl) + postings saved when you apply
 └── <company>/             tailored PDFs
 ```
 
@@ -61,33 +62,39 @@ After that:
 |---|---|
 | "Any new jobs?" | Full scan → filter → Claude vets → ranked list with reasons for every exclusion |
 | "Tailor my CV for <link>" | Maps requirements to your facts, asks about gaps, writes PDFs |
-| "I applied to X" / "X replied" | Tracker updated |
+| "I applied to X" / "X replied" | Tracker and outcome log updated; the posting is saved |
+| "Skip X, the pay is too low" | Logged with your reason. Claude asks before turning it into a rule |
 | "Prep me for the X interview" | Company research, role → evidence map, honest answers for gaps, questions to ask |
+| "Mock my AI interview for X" | Likely questions one at a time, each answer scored against the AI-interview rules |
+| "Also watch Acme and Globex" | Finds their job boards (`--probe-ats`) and adds them to the scan |
+| "How is my search going?" | Funnel (`stats`) and whether the fit score predicts interviews (`calibrate`) |
 | "Only show EU jobs above €4k" | Rules + filters updated, change logged |
 
 Scripts also run on their own:
 
 ```bash
 python3 skill/job-hunt/scripts/scan.py   --workspace ~/JobHunt
-python3 skill/job-hunt/scripts/filter.py --workspace ~/JobHunt
+python3 skill/job-hunt/scripts/filter.py --workspace ~/JobHunt     # also logs filter decisions
+python3 skill/job-hunt/scripts/scan.py   --workspace ~/JobHunt --probe-ats acme,globex
+python3 skill/job-hunt/scripts/outcomes.py --workspace ~/JobHunt stats       # or: calibrate
 ```
 
 ## Configuration
 
-All tuning lives in `search/filters.md` in your workspace (see its field guide): queries, title/description keywords, allowed regions, pay floor, ghost-job limits, fit weights, enabled sources. An example: `examples/answers-frontend-portugal.json`.
+All tuning lives in `search/filters.md` in your workspace (see its field guide): queries, title/description keywords, allowed regions, pay floor, ghost-job limits, fit weights, enabled sources, company job boards to watch (`atsBoards`), and single roles to drop without excluding the company (`excludedRoles`). An example: `examples/answers-frontend-portugal.json`.
 
 ## Privacy
 
-Your workspace contains your CV, salary expectations and application history. The workspace `.gitignore` ignores everything by default. **Don't commit it.** The scripts only call public job-board APIs and an FX-rate API (frankfurter.app). Nothing about you is sent anywhere.
+Your workspace contains your CV, salary expectations, application history and outcome log. The workspace `.gitignore` ignores everything by default. **Don't commit it.** The scripts only call public job-board APIs and an FX-rate API (frankfurter.app). Nothing about you is sent anywhere.
 
 ## Sources and terms
 
-Only public APIs and RSS feeds are used. LinkedIn, Indeed, Glassdoor and Wellfound are intentionally not scraped: search those manually. Remote Rocketship needs your own API key (`~/.config/remoterocketship/api-key`). Job-board endpoints change, so the notes are in `templates/search/sources.md` and PRs are welcome.
+Only public APIs and RSS feeds are used, including the public job-board APIs of Greenhouse, Ashby, Lever and Workable for the companies you list. LinkedIn, Indeed, Glassdoor and Wellfound are intentionally not scraped: search those manually. Remote Rocketship needs your own API key (`~/.config/remoterocketship/api-key`). Job-board endpoints change, so the notes are in `templates/search/sources.md` and PRs are welcome.
 
 ## Tests
 
 ```bash
-python3 -m unittest discover -s tests -v    # offline, synthetic jobs
+python3 -m unittest discover -s tests -v    # offline: filters, outcome log, calibration, job-board parsers
 ```
 
 ## License
