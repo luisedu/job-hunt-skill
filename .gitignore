@@ -1,6 +1,8 @@
 __pycache__/
 *.pyc
 .venv/
+.claude/settings.local.json
+.serena/
 # never commit a real workspace or scan output
 search/scans/
 *.pdf

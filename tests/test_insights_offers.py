@@ -66,7 +66,7 @@ class Companies(Base):
         rows = {r["company"]: r for r in I.companies(self.ws)}
         self.assertEqual(rows["Acme"]["median_days_to_reply"], 6)
         self.assertEqual(rows["Acme"]["formats"], {"ai-audio (botco)": 1})
-        self.assertIn("n too small", rows["Acme"]["reply_rate"])
+        self.assertNotIn("%", rows["Acme"]["reply_rate"])
         self.assertEqual(rows["Beta"]["ghosted"], 1)
         self.assertNotIn("Gamma", rows)                                           # never applied: hidden by default
         self.assertEqual({r["company"]: r for r in I.companies(self.ws, show_all=True)}["Gamma"]["reposts"], 1)

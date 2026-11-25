@@ -13,10 +13,10 @@ Usage:
 For offers paid in another currency it shows net pay if that currency moves -20..+20%, and at the lowest and
 highest rate of the last 12 months (ECB rates via frankfurter.app). Equity is listed but never added to totals.
 """
-import argparse, datetime as dt, json, os, sys
+import argparse, datetime as dt, os, sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from config import load_config  # noqa: E402
+from config import load_config, read_json  # noqa: E402
 import netpay  # noqa: E402
 import scan  # noqa: E402
 from filter import fx_table  # noqa: E402
@@ -29,8 +29,14 @@ def monthly_gross(o, cfg):
     amt = float(o["amount"])
     if per.startswith("hour"):
         return amt * cfg["pay"]["hoursPerMonth"], "rate"
+    if per.startswith("day"):
+        return amt * cfg["pay"]["hoursPerMonth"] / 8, "rate"
+    if per.startswith("week"):
+        return amt * 4.33, "rate"
     if per.startswith("year") or per.startswith("annual"):
         return amt / 12, "year"
+    if not per.startswith("month"):
+        raise SystemExit(f"offer {o.get('name')!r}: per must be hour, day, week, month or year (got {per!r})")
     return amt, ("rate" if o.get("contract") in ("contractor", "pj_local") else None)
 
 
@@ -102,7 +108,7 @@ def main():
     ws = os.path.abspath(os.path.expanduser(a.workspace))
     cfg = load_config(ws, require_queries=False)
     path = a.file or os.path.join(ws, "interview", "offers.json")
-    offers = json.load(open(path, encoding="utf-8"))
+    offers = read_json(path)
     home = cfg["profile"]["currency"].upper()
     rows = compare(offers, cfg, fx_table(cfg), not a.no_history)
     print(f"Offers compared in {home}/month (estimates, not tax advice)\n")

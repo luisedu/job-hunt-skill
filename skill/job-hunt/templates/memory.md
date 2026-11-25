@@ -6,7 +6,6 @@ Last confirmed: {{today}}
 - Based in {{homeCity}}, {{homeCountry}}. Remote only: {{remoteOnly}}. Hybrid OK in: {{hybridOkCities}}.
 - Employer must be able to hire someone living in {{homeCountry}}. Allowed regions: {{allowedRegions}}, or worldwide.
 - Remote jobs restricted to other countries/regions are out.
-- Citizenship is not residence: a passport gives the right to work somewhere, but a job that requires living there means relocating. Details are in `search/filters.md` → `person`.
 
 ## Role
 - Target: {{targetRoles}} ({{seniority}}).
@@ -19,12 +18,9 @@ Last confirmed: {{today}}
 ## Ghost-job and quality rules
 - Skip postings older than 60 days, reposts, and talent-pool / evergreen listings. Dedupe across boards.
 - Flag scams: free-mail recruiters, fees, messenger-only contact, crypto pay, unverifiable companies, implausible pay.
-- **Never share ID documents, bank details or pay any fee before a signed contract with a named legal entity.**
 
 ## Documents
-- {{name}} applies personally. Claude never submits or sends anything.
-- Only final PDFs in `<company>/`. Keep the References section. Never remove CV content without asking.
-- Claims are limited to `curriculum/profile.md`.
+- Keep the References section. Never remove CV content without asking.
 
 ## Languages
 {{languages}}

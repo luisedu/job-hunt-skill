@@ -8,12 +8,12 @@ Usage:
   python3 insights.py --workspace WS weekly [--days 7]                              # search health + one suggestion
   python3 insights.py --workspace WS due                                            # what needs attention today (run at session start)
 
-Small numbers are reported as counts ("n too small"), never as percentages.
+Small numbers (n < MIN_N) are reported as counts "k/n", never as percentages; each report says so once.
 """
 import argparse, collections, datetime as dt, glob, json, os, re, statistics, sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from config import load_config  # noqa: E402
+from config import load_config, write_atomic, read_json  # noqa: E402
 import eligibility as EL  # noqa: E402
 from outcomes import MIN_N, Log, job_id, rate  # noqa: E402
 
@@ -56,7 +56,7 @@ def load_results(ws, cfg, days=None, today=None):
         d = scan_date(path)
         if days and (today - dt.date.fromisoformat(d)).days > days:
             continue
-        res = json.load(open(path, encoding="utf-8"))
+        res = read_json(path)
         for j in res.get("keep", []) + res.get("excluded", []):
             jid = job_id(j["company"], j["title"])
             first = jobs[jid]["first_seen"] if jid in jobs else d
@@ -121,7 +121,7 @@ def add_ats(ws, found):
         if f["slug"] not in lst:
             lst.append(f["slug"])
     new = md[:m.start(1)] + json.dumps(cfg, indent=2, ensure_ascii=False) + md[m.end(1):]
-    open(path, "w", encoding="utf-8").write(new)
+    write_atomic(path, new)
     return boards
 
 
@@ -327,9 +327,10 @@ def due(ws, today=None):
         sub = min([e["date"] for e in evs if (e["event"] == "stage" and e["value"] == "submitted") or (e["event"] == "decision" and e["value"] == "applied")] or [None], key=lambda x: x or "9")
         if sub and not set(st) & (REPLY | ENDED):
             age = (today - dt.date.fromisoformat(sub)).days
+            nudged = st.get("followed_up")
             if age >= 21:
                 out["ghost_risk"].append((name, age))
-            elif age >= 5:
+            elif age >= 5 and not (nudged and (today - dt.date.fromisoformat(nudged)).days < 7):
                 out["follow_up"].append((name, age))
         for e in evs:
             when = (e.get("data") or {}).get("scheduled")
@@ -431,7 +432,7 @@ def main():
         print(f"Week {r['window']}  (previous window in brackets)")
         for k in ("scans", "kept", "applied", "skipped", "replies", "interviews"):
             print(f"  {k:10} {t[k]:3d}  [{p[k]}]")
-        print("  by channel (all time):", ", ".join(f"{c}: {v['reply_rate']} replied" for c, v in r["channels"].items()) or "-")
+        print(f"  by channel (all time; % only from {MIN_N} applications):", ", ".join(f"{c}: {v['reply_rate']} replied" for c, v in r["channels"].items()) or "-")
         if r["follow_up"]:
             print("  follow-up due (5-20 days, no reply):", ", ".join(f"{n} ({a}d)" for n, a in r["follow_up"]))
         print("\nSuggestion:", r["suggestion"])

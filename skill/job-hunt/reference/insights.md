@@ -1,4 +1,4 @@
-# Insights (read-only reports; no model calls; counts instead of rates below 5 cases)
+# Insights (read-only reports)
 
 ```bash
 python3 SKILL_DIR/scripts/insights.py --workspace <ws> due                     # today's follow-ups, interviews, check-ins

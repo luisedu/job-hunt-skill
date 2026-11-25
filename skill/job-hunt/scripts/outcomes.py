@@ -17,7 +17,7 @@ Usage:
 `event --event decision --value applied` also snapshots the posting text into outcomes/postings/,
 so you can later check whether the job matched what was advertised.
 """
-import argparse, collections, datetime as dt, glob, json, os, re, shutil, sys
+import argparse, collections, datetime as dt, glob, json, os, re, sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from config import load_config  # noqa: E402
@@ -39,7 +39,7 @@ FILTER_CODES = [  # (regex on filter.py reason text, code)
 ]
 EVENTS = {
     "decision": {"applied", "skipped", "saved"},
-    "stage": {"submitted", "screening", "interview", "offer", "hired", "rejected", "ghosted", "withdrawn"},
+    "stage": {"submitted", "followed_up", "screening", "interview", "offer", "hired", "rejected", "ghosted", "withdrawn"},
     "rule": {"proposed", "approved", "rejected"},
     "checkin": {"30d", "90d", "180d", "365d", "left"},
 }
@@ -154,13 +154,18 @@ def log_event(ws, company, title, event, value, reason=None, note=None, date=Non
     if note:
         row["note"] = note
     if data:
-        row["data"] = json.loads(data) if isinstance(data, str) else data
+        try:
+            row["data"] = json.loads(data) if isinstance(data, str) else data
+        except json.JSONDecodeError as e:
+            raise SystemExit(f"--data must be a JSON object, e.g. '{{\"channel\": \"referral\"}}' ({e})")
     if reply:
         row["reply"] = reply  # the user's words, verbatim: required evidence for an approved rule
     if event == "decision" and value == "applied":
         snap = snapshot_posting(ws, row["job"])
         if snap:
             row["posting"] = os.path.relpath(snap, ws)
+        else:
+            print(f"no scanned posting matches job id {row['job']}: pass --job <id from the scan results> to save it", file=sys.stderr)
     Log(ws).append([row])
     return row
 
@@ -193,12 +198,13 @@ def redact(ws, terms):
         n += new != r
         out.append(new)
     if os.path.exists(log.path):
-        shutil.copy2(log.path, log.path + ".bak")
         tmp = log.path + ".tmp"
         with open(tmp, "w", encoding="utf-8") as f:
             for r in out:
                 f.write(json.dumps(r, ensure_ascii=False) + "\n")
-        os.replace(tmp, log.path)
+        os.replace(tmp, log.path)  # atomic: no backup copy, which would keep the erased data
+    for old in glob.glob(log.path + ".bak*"):  # backups from older versions held the unredacted log
+        os.remove(old)
     for snap in glob.glob(os.path.join(ws, "outcomes", "postings", "*.md")):
         with open(snap, encoding="utf-8") as f:
             txt = f.read()
@@ -258,7 +264,7 @@ def stats(ws):
 
 
 def rate(k, n):
-    return f"{k}/{n} (n too small)" if n < MIN_N else f"{k}/{n} = {100 * k // n}%"
+    return f"{k}/{n}" if n < MIN_N else f"{k}/{n} = {100 * k // n}%"
 
 
 def calibrate(ws):

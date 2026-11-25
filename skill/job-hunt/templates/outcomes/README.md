@@ -1,10 +1,10 @@
 # Outcome log
 
-`outcomes.jsonl` records what happened to every job: filtered, skipped, applied, interviewed, hired, and how the job went afterwards. It's the evidence the search learns from. It's append-only, with one JSON object per line. Never edit old lines: to correct one, append a new event. **Privacy exception:** `outcomes.py redact "Name" "email"` removes a person's data from every line. Write roles ("recruiter"), not names, in `note` and `data`.
+`outcomes.jsonl` records what happened to every job: filtered, skipped, applied, interviewed, hired, and how the job went afterwards. It's the evidence the search learns from. It's append-only, with one JSON object per line. Never edit old lines: to correct one, append a new event. Exception: erasure (see Privacy).
 
 - `filter.py` logs every scan automatically.
 - Claude logs your decisions, stages, rules and check-ins with `outcomes.py event`.
-- `outcomes.py stats` prints the funnel. `outcomes.py calibrate` checks whether the fit score predicts interviews. It is advisory and shows counts, not percentages, while samples are small.
+- `outcomes.py stats` prints the funnel. `outcomes.py calibrate` checks whether the fit score predicts interviews (advisory).
 - Applying (`decision applied`) saves the posting text to `postings/`, so later you can check whether the job matched what was advertised.
 
 ## Common fields
@@ -47,7 +47,7 @@ Add new codes freely, but list them here.
 `sources`, `region`, `loc`, `age_days`, `salary_listed`, `pay_monthly`, `seniority`, `skills`, `scam_flag`, `fit`, `url`, plus `contract`, `eligibility` and `pay_net` (estimated net monthly range).
 
 ## Privacy
-Personal data: yours, plus some about recruiters and companies. Never publish it.
+Personal data: yours, plus some about recruiters and companies. Never publish it. Write roles ("recruiter"), not names, in `note` and `data`.
 - **Sharing** is always opt-in and only through `outcomes.py export`. It keeps event types, values, reason codes, the month, a job index and coarse features (no company, title, URL, notes, replies or exact dates). Check the file before it leaves your machine.
 - **Erasure:** `outcomes.py redact "Name" "email"`. To delete everything, delete this folder.
 - **Retention:** delete saved postings and interview notes of closed applications when you no longer need them, e.g. 6 months after the search ends.

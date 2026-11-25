@@ -39,7 +39,8 @@ It **never applies, emails or messages anyone for you.** You stay in control of 
 
 As a Claude Code plugin (recommended; updates with `/plugin update`):
 ```text
-/plugin install job-hunt --marketplace luisedu/job-hunt-skill
+/plugin marketplace add luisedu/job-hunt-skill
+/plugin install job-hunt@job-hunt-skill
 ```
 Or from a clone:
 ```bash

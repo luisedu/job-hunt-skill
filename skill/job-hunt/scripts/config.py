@@ -42,7 +42,26 @@ def _merge(base, over):
     return out
 
 
+def private_files():
+    """New files and folders are owner-only: the workspace holds personal data."""
+    os.umask(0o077)
+
+
+def read_json(path):
+    with open(path, encoding="utf-8") as fh:
+        return json.load(fh)
+
+
+def write_atomic(path, text):
+    """Write via a temp file and rename, so a crash never leaves a half-written file."""
+    tmp = path + ".tmp"
+    with open(tmp, "w", encoding="utf-8") as fh:
+        fh.write(text)
+    os.replace(tmp, path)
+
+
 def load_config(workspace, require_queries=True):
+    private_files()
     path = os.path.join(workspace, "search", "filters.md")
     with open(path, encoding="utf-8") as fh:
         md = fh.read()

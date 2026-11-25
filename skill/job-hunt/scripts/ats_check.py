@@ -31,7 +31,9 @@ EMAIL = re.compile(r"[\w.+-]+@[\w-]+\.[\w.]+")
 PHONE = re.compile(r"\+?\d[\d ()-]{7,}\d")
 GLUED = re.compile(r"[^\s•▪●◦\-–]([•▪●◦])\s")
 ODD = re.compile("[ﬀ-ﬆ�-]")
-NICE_HDR = re.compile(r"nice[- ]to[- ]have|bonus|preferred|a plus|pluses|desirable|what would make you exceptional|diferencia|desej[áa]vel", re.I)
+NICE_HDR = re.compile(  # a section heading, not the word inside a sentence ("salary and bonus", "X is a plus")
+    r"(?:^|\n|[.!?]\s)\s*[#*•\-]*\s*(?:nice[- ]to[- ]haves?|bonus points|preferred (?:qualifications|skills|experience)|pluses|"
+    r"(?:it'?s |would be )?a plus if|desirable|what would make you exceptional|diferenciais|desej[áa]vel|deseját?veis)\b[^\n.:]{0,40}(?::|\n)", re.I)
 NEED_HDR = re.compile(r"requirements|what you.ll need|qualifications|must have|you have|we.re looking for|requisitos|o que buscamos", re.I)
 SCREEN = {
     "location": (r"based in|located in|must (?:live|reside)|residen|relocat|on-?site|hybrid|time ?zone|overlap", r"remote|hybrid|based|location|reloca|time ?zone|live"),
@@ -43,7 +45,16 @@ SCREEN = {
 }
 
 
+def need_tools(*tools):
+    import shutil
+    miss = [t for t in tools if not shutil.which(t)]
+    if miss:
+        raise SystemExit(f"missing {', '.join(miss)}: install poppler (Debian/Ubuntu: apt install poppler-utils; "
+                         "macOS: brew install poppler; Windows: choco install poppler)")
+
+
 def pdf_text(path, mode="-raw"):
+    need_tools("pdftotext", "pdfinfo", "pdffonts")
     r = subprocess.run(["pdftotext", mode, path, "-"], capture_output=True, text=True)
     if r.returncode != 0:
         raise SystemExit(f"pdftotext failed on {path}: {r.stderr.strip()} (install poppler-utils)")
@@ -96,7 +107,14 @@ def posting_text(src):
         return ""
     if re.match(r"https?://", src):
         import scan
-        return re.sub(r"[ \t\xa0]+", " ", scan.strip(scan.get(src)))
+        code, _, body = scan.fetch_public(src)
+        text = re.sub(r"[ \t\xa0]+", " ", scan.strip(body))
+        if len(text) < 300:
+            raise SystemExit(f"could not read the posting at {src} (HTTP {code}; public http(s) hosts only, and pages built by "
+                             "JavaScript come back empty): save the posting text to a file and pass that file to --posting")
+        return text
+    if not os.path.exists(src):
+        raise SystemExit(f"--posting: no such file {src}")
     import html
     return html.unescape(open(src, encoding="utf-8").read()).replace("\xa0", " ")
 

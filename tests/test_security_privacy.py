@@ -39,13 +39,13 @@ class ApiKey(Tmp):
             seen["auth"] = req.get_header("Authorization")
             return Resp(b'{"jobOpenings": []}')
 
-        old_open, old_run = S.urllib.request.urlopen, S.subprocess.run
-        S.urllib.request.urlopen = fake_urlopen
+        old_open, old_run = S.API.open, S.subprocess.run
+        S.API.open = fake_urlopen
         S.subprocess.run = lambda *a, **k: self.fail("no subprocess may see the key")
         try:
             self.assertEqual(S.rr_post(keyf, b"{}"), {"jobOpenings": []})
         finally:
-            S.urllib.request.urlopen, S.subprocess.run = old_open, old_run
+            S.API.open, S.subprocess.run = old_open, old_run
         self.assertEqual(seen["auth"], "Bearer SECRET123")
 
     def test_curl_is_hardened(self):

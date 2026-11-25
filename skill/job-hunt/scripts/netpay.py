@@ -22,11 +22,16 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 _MODELS = {}
 
 
+def _read(p):
+    with open(p, encoding="utf-8") as fh:
+        return json.load(fh)
+
+
 def load_model(cc):
     cc = (cc or "").upper()
     if cc and cc not in _MODELS:
         p = os.path.join(HERE, "netpay", f"{cc}.json")
-        _MODELS[cc] = json.load(open(p, encoding="utf-8")) if os.path.exists(p) else None
+        _MODELS[cc] = _read(p) if os.path.exists(p) else None
     return _MODELS.get(cc)
 
 

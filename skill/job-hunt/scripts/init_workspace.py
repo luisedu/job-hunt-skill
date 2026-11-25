@@ -26,8 +26,14 @@ answers.json (Claude collects these from the user first; see SKILL.md "First run
   "excludedCompanies": [],
   "fit": {"react": 2, "typescript": 2, "next\\.js": 1},
   "sources": {"gupy": false, "getonbrd": false, "arbeitnow": true, "remoterocketship": false},
-  "gupyTerms": []
+  "gupyTerms": [],
+  "residence": "PT", "citizenships": ["PT"], "workPermits": [],      # ISO country codes (eligibility)
+  "timezone": "Europe/Lisbon", "minOverlapHours": 4,                  # IANA zone name
+  "contracts": ["employee_local", "contractor"],                      # contract types the user accepts
+  "netModel": "", "netRates": {"employee_local": 0.72, "contractor": 0.8},  # netModel "BR" or flat net rates
+  "contractorBillableMonths": 11, "unlistedPay": "flag"               # unlistedPay: flag | keep | hide
 }
+Comments above are for reading only: answers.json is plain JSON. More examples: the repo's examples/ folder.
 """
 import argparse, json, os, re, shutil, sys, datetime as dt
 
@@ -84,11 +90,22 @@ def main():
     ap.add_argument("--force", action="store_true", help="overwrite existing files")
     o = ap.parse_args()
     ws = os.path.abspath(os.path.expanduser(o.workspace))
-    a = json.load(open(o.answers))
+    with open(o.answers, encoding="utf-8") as fh:
+        a = json.load(fh)
     missing = [k for k in ("name", "homeCountry", "currency", "queries", "titleKeywords", "textKeywords", "allowedRegions", "floorMonthly") if k not in a]
     if missing:
         sys.exit("answers.json missing: " + ", ".join(missing))
+    if a.get("timezone"):
+        try:
+            from zoneinfo import ZoneInfo
+            ZoneInfo(a["timezone"])
+        except Exception:
+            sys.exit(f"timezone {a['timezone']!r}: use an IANA name such as America/Sao_Paulo or Europe/Lisbon")
+    os.umask(0o077)  # personal data: owner-only files and folders
+    os.makedirs(ws, exist_ok=True)
+    os.chmod(ws, 0o700)
     a.setdefault("today", dt.date.today().isoformat())
+    a["skillDir"], a["workspace"] = SKILL, ws
     a.setdefault("excludedCompaniesList", "\n".join(f"- {c}" for c in a.get("excludedCompanies", [])) or "- (none yet)")
     a["filtersJson"] = filters_json(a)
 

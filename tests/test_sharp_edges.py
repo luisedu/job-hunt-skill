@@ -72,7 +72,7 @@ class Outcomes(Tmp):
         row = O.Log(self.d).load()[0]
         self.assertEqual(set(row), {"v", "date", "event", "job", "value", "note"})   # keys intact
         self.assertIn("[redacted]", row["note"])
-        self.assertTrue(os.path.exists(O.Log(self.d).path + ".bak"))
+        self.assertFalse(os.path.exists(O.Log(self.d).path + ".bak"))  # a backup would keep the erased name
         with open(os.path.join(self.d, "outcomes", "postings", "a__b.md")) as f:
             self.assertNotIn("Ana", f.read())
 
