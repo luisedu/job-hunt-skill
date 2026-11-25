@@ -162,6 +162,10 @@ Every report shows each job's source and original link: RemoteOK, Remotive and J
 python3 -m unittest discover -s tests -v    # offline: filters, outcome log, calibration, job-board parsers, net pay, eligibility, company check, insights, offers, ATS check
 ```
 
+## Support
+
+The skill is free and stays free. If it helped your search, you can [sponsor its upkeep](https://github.com/sponsors/luisedu): job boards change often, and fixes take time. Reporting a broken source or adding your country's net-pay rules helps just as much.
+
 ## License
 
 MIT
