@@ -22,3 +22,5 @@ jobs:
         run: python -W error::ResourceWarning -m unittest discover -s tests -v
       - name: Byte-compile scripts
         run: python -m py_compile skill/job-hunt/scripts/*.py
+      - name: Lint (pyflakes errors only)
+        run: pip install --quiet ruff==0.8.6 && ruff check .

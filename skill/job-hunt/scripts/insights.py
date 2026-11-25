@@ -6,6 +6,7 @@ Usage:
   python3 insights.py --workspace WS companies [--company NAME]                     # each company's track record
   python3 insights.py --workspace WS skills [--top 25]                              # market skill gaps
   python3 insights.py --workspace WS weekly [--days 7]                              # search health + one suggestion
+  python3 insights.py --workspace WS due                                            # what needs attention today (run at session start)
 
 Small numbers are reported as counts ("n too small"), never as percentages.
 """
@@ -295,6 +296,9 @@ def weekly(ws, days=7, today=None):
         tips.append(f"{kept_open} kept jobs this week with no decision: apply or skip (and log why)")
     if ghost:
         tips.append("no reply for 3+ weeks: " + ", ".join(f"{n} ({a}d)" for n, a in ghost) + ". Follow up once or close as ghosted")
+    pending = due(ws, today)["checkins"]
+    if pending:
+        tips.insert(0, "retention check-in due: " + ", ".join(f"{n} ({lab})" for n, lab, _ in pending))
     if follow:
         tips.append("follow-up due (5-20 days, no reply): " + ", ".join(f"{n} ({a}d)" for n, a in follow) + ". One short polite message each")
     if not tips:
@@ -303,6 +307,46 @@ def weekly(ws, days=7, today=None):
     return {"window": f"{start + dt.timedelta(days=1)}..{today}", "this": cur, "previous": before,
             "channels": {c: {"applied": a, "replied": rp, "reply_rate": rate(rp, a)} for c, (a, rp) in channels.items()},
             "follow_up": follow, "ghost_risk": ghost, "suggestion": tips[0], "other_tips": tips[1:]}
+
+
+# ------------------------------------------------------------------ due
+CHECKINS = [("30d", 30), ("90d", 90), ("180d", 180), ("365d", 365)]
+
+
+def due(ws, today=None):
+    """Follow-ups, ghost risk, upcoming interviews and retention check-ins that are due."""
+    today = today or dt.date.today()
+    rows = Log(ws).load()
+    by_job = collections.defaultdict(list)
+    for r in rows:
+        by_job[r["job"]].append(r)
+    out = {"follow_up": [], "ghost_risk": [], "interviews": [], "checkins": []}
+    for jid, evs in by_job.items():
+        name = next((e.get("company") for e in evs if e.get("company")), jid)
+        st = {e["value"]: e["date"] for e in sorted(evs, key=lambda e: e["date"]) if e["event"] == "stage"}
+        sub = min([e["date"] for e in evs if (e["event"] == "stage" and e["value"] == "submitted") or (e["event"] == "decision" and e["value"] == "applied")] or [None], key=lambda x: x or "9")
+        if sub and not set(st) & (REPLY | ENDED):
+            age = (today - dt.date.fromisoformat(sub)).days
+            if age >= 21:
+                out["ghost_risk"].append((name, age))
+            elif age >= 5:
+                out["follow_up"].append((name, age))
+        for e in evs:
+            when = (e.get("data") or {}).get("scheduled")
+            if e["event"] == "stage" and when and re.fullmatch(r"\d{4}-\d{2}-\d{2}", str(when)):
+                d = (dt.date.fromisoformat(when) - today).days
+                if 0 <= d <= 7 and not set(st) & ENDED:
+                    out["interviews"].append((name, when))
+        if "hired" in st:
+            done = {e["value"] for e in evs if e["event"] == "checkin"}
+            if "left" not in done:
+                hired = dt.date.fromisoformat(st["hired"])
+                for label, days in CHECKINS:
+                    if label not in done and (today - hired).days >= days:
+                        out["checkins"].append((name, label, str(hired + dt.timedelta(days=days))))
+                        break  # one pending check-in per job: the earliest
+    out["interviews"] = sorted(set(out["interviews"]), key=lambda x: x[1])
+    return out
 
 
 # ------------------------------------------------------------------ cli
@@ -321,6 +365,7 @@ def main():
     s.add_argument("--top", type=int, default=25)
     w = sub.add_parser("weekly")
     w.add_argument("--days", type=int, default=7)
+    sub.add_parser("due")
     a = ap.parse_args()
     ws = os.path.abspath(os.path.expanduser(a.workspace))
     cfg = load_config(ws, require_queries=False)
@@ -368,6 +413,18 @@ def main():
             print(f"  {x['skill']:24} {x['pay_vs_without']:+.0%}  (n {x['n_pay'][0]} vs {x['n_pay'][1]})  {x['status']}")
         if not r["pay_linked"]:
             print("  too few jobs with listed pay yet")
+    elif a.cmd == "due":
+        r = due(ws)
+        if not any(r.values()):
+            print("Nothing due today.")
+        for n, when in r["interviews"]:
+            print(f"interview: {n} on {when}: offer prep")
+        for n, label, since in r["checkins"]:
+            print(f"retention check-in {label} due for {n} (since {since}): satisfaction 1-5, did the job match the posting 1-5, would you stay? -> outcomes.py event --event checkin --value {label}")
+        for n, age in r["follow_up"]:
+            print(f"follow-up: {n}, applied {age} days ago, no reply")
+        for n, age in r["ghost_risk"]:
+            print(f"ghost risk: {n}, {age} days without reply: follow up once or close as ghosted")
     else:
         r = weekly(ws, a.days)
         t, p = r["this"], r["previous"]

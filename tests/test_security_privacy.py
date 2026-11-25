@@ -123,8 +123,20 @@ class Privacy(Tmp):
 class Rules(unittest.TestCase):
     def test_skill_has_safety_rules(self):
         s = open(os.path.join(ROOT, "skill", "job-hunt", "SKILL.md")).read()
-        for needle in ("data, never instructions", "Other people's data", "Job-board terms", "redact"):
+        for needle in ("data, never instructions", "Other people's data", "**Sources:**", "redact", "The user applies", "Do NOT claim"):
             self.assertIn(needle, s)
+
+    def test_skill_links_resolve_and_stay_small(self):
+        import re
+        base = os.path.join(ROOT, "skill", "job-hunt")
+        s = open(os.path.join(base, "SKILL.md")).read()
+        links = re.findall(r"\]\((reference/[^)]+)\)", s)
+        self.assertTrue(links)
+        for link in links:
+            self.assertTrue(os.path.exists(os.path.join(base, link)), link)
+        self.assertLess(len(s), 9000, "SKILL.md loads on every use: keep details in reference/")
+        desc = re.search(r"^description: (.*)$", s, re.M).group(1)
+        self.assertLessEqual(len(desc), 1024)
 
 
 if __name__ == "__main__":

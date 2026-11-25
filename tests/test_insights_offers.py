@@ -124,6 +124,25 @@ class Weekly(Base):
         self.assertEqual(r["follow_up"], [(f"C{i}", 5) for i in range(5)])
 
 
+class Due(Base):
+    def test_due_lists_interviews_followups_and_checkins(self):
+        Log(self.ws).append([
+            {"date": "2026-06-20", "event": "stage", "job": "a/eng", "company": "A", "value": "submitted"},
+            {"date": "2026-06-01", "event": "stage", "job": "b/eng", "company": "B", "value": "submitted"},
+            {"date": "2026-06-25", "event": "stage", "job": "c/eng", "company": "C", "value": "interview", "data": {"scheduled": "2026-07-02"}},
+            {"date": "2026-01-10", "event": "stage", "job": "d/eng", "company": "D", "value": "hired"},
+            {"date": "2026-02-12", "event": "checkin", "job": "d/eng", "company": "D", "value": "30d", "data": {"satisfaction": 4}},
+            {"date": "2025-01-01", "event": "stage", "job": "e/eng", "company": "E", "value": "hired"},
+            {"date": "2025-06-01", "event": "checkin", "job": "e/eng", "company": "E", "value": "left"},
+        ])
+        r = I.due(self.ws, TODAY)
+        self.assertEqual(r["follow_up"], [("A", 10)])
+        self.assertEqual(r["ghost_risk"], [("B", 29)])
+        self.assertEqual(r["interviews"], [("C", "2026-07-02")])
+        self.assertEqual([(n, lab) for n, lab, _ in r["checkins"]], [("D", "90d")])   # 30d done, 90d due; E left
+        self.assertIn("check-in due", I.weekly(self.ws, 7, TODAY)["suggestion"])
+
+
 class Offers(unittest.TestCase):
     cfg = {"profile": {"currency": "BRL"}, "pay": {"hoursPerMonth": 160},
            "person": {"netModel": "BR", "contractorBillableMonths": 12, "contracts": []}}

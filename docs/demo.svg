@@ -1,22 +1,22 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="980" height="406" viewBox="0 0 980 406">
-<rect width="980" height="406" rx="10" fill="#0d1117"/>
+<svg xmlns="http://www.w3.org/2000/svg" width="980" height="392" viewBox="0 0 980 392">
+<rect width="980" height="392" rx="10" fill="#0d1117"/>
 <circle cx="20" cy="18" r="6" fill="#ff5f56"/><circle cx="40" cy="18" r="6" fill="#ffbd2e"/><circle cx="60" cy="18" r="6" fill="#27c93f"/>
-<text x="490.0" y="22" fill="#8b949e" font-family="monospace" font-size="12" text-anchor="middle">job-hunt · demo profile: frontend engineer in Portugal, floor EUR 3,500/mo</text>
+<text x="490" y="22" fill="#8b949e" font-family="monospace" font-size="12" text-anchor="middle">job-hunt · example profile: frontend engineer in Portugal, floor EUR 3,500/mo</text>
 <g font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="13">
-<text x="16" y="46" fill="#7ee787" xml:space="preserve">$ python3 scan.py --workspace ~/JobHunt</text>
-<text x="16" y="66" fill="#c9d1d9" xml:space="preserve">  RemoteOK 100  Remotive 48  Himalayas 180  Jobicy 150  Arbeitnow 2082</text>
-<text x="16" y="86" fill="#c9d1d9" xml:space="preserve">  WeWorkRemotely 544  WorkingNomads 37  HN WhoIsHiring 240   → 3381 jobs</text>
-<text x="16" y="106" fill="#7ee787" xml:space="preserve">$ python3 filter.py --workspace ~/JobHunt</text>
-<text x="16" y="126" fill="#79c0ff" xml:space="preserve">  3381 raw → 231 relevant (deduped) → 48 kept</text>
-<text x="16" y="146" fill="#8b949e" xml:space="preserve">  excluded: onsite 40 · restricted to united states 22 · restricted to india 20 · restricted to usa 11 · not remote 5</text>
-<text x="16" y="186" fill="#f0f6fc" xml:space="preserve">[13] Senior Frontend Engineer - Acquisition — Alpaca</text>
-<text x="16" y="206" fill="#8b949e" xml:space="preserve">     Himalayas · 3d · salary not listed · 97 countries incl. Portugal</text>
-<text x="16" y="226" fill="#f0f6fc" xml:space="preserve">[13] Senior Frontend Developer (m/w/d) React, Next.js &amp; TypeScript — roclub</text>
-<text x="16" y="246" fill="#8b949e" xml:space="preserve">     Himalayas · 3d · salary not listed · 52 countries incl. Portugal</text>
-<text x="16" y="266" fill="#f0f6fc" xml:space="preserve">[13] Frontend Engineer (React, TypeScript) — Devop.One</text>
-<text x="16" y="286" fill="#8b949e" xml:space="preserve">     Himalayas · 22d · salary not listed · 52 countries incl. Portugal</text>
-<text x="16" y="306" fill="#f0f6fc" xml:space="preserve">[13] Senior Web Engineer - Subscriptions — Spotify</text>
-<text x="16" y="326" fill="#8b949e" xml:space="preserve">     Jobicy · 2d · salary not listed · EMEA</text>
-<text x="16" y="346" fill="#f0f6fc" xml:space="preserve">[10] Senior Software Engineer, Product/AI — Customer.io</text>
-<text x="16" y="366" fill="#8b949e" xml:space="preserve">     Jobicy · 0d · EUR 11,374–18,957/mo · EMEA</text>
+<text x="16" y="52" fill="#7ee787" xml:space="preserve">$ python3 scan.py --workspace ~/JobHunt &amp;&amp; python3 filter.py --workspace ~/JobHunt</text>
+<text x="16" y="73" fill="#c9d1d9" xml:space="preserve">3,165 postings from 8 boards → 243 relevant → 50 kept</text>
+<text x="16" y="94" fill="#8b949e" xml:space="preserve">excluded: onsite 47, restricted to united states 24, restricted to india 21, not remote 5</text>
+<text x="16" y="115" fill="#c9d1d9" xml:space="preserve"></text>
+<text x="16" y="136" fill="#79c0ff" xml:space="preserve">[13] Senior Frontend Engineer - Acquisition — Alpaca</text>
+<text x="16" y="157" fill="#8b949e" xml:space="preserve">     Himalayas · eligibility: eligible · salary not listed · 5d</text>
+<text x="16" y="178" fill="#79c0ff" xml:space="preserve">[13] Senior Frontend Developer (m/w/d) React, Next.js &amp; TypeScr — roclub</text>
+<text x="16" y="199" fill="#8b949e" xml:space="preserve">     Himalayas · eligibility: eligible · salary not listed · 5d</text>
+<text x="16" y="220" fill="#79c0ff" xml:space="preserve">[13] Frontend Engineer (React, TypeScript) — Devop.One</text>
+<text x="16" y="241" fill="#8b949e" xml:space="preserve">     Himalayas · eligibility: eligible · salary not listed · 24d</text>
+<text x="16" y="262" fill="#79c0ff" xml:space="preserve">[12] Full Stack Developer - Java &amp; React (f/m/d) — ecosio</text>
+<text x="16" y="283" fill="#8b949e" xml:space="preserve">     Arbeitnow · eligibility: eligible · salary not listed · 0d</text>
+<text x="16" y="304" fill="#79c0ff" xml:space="preserve">[11] Frontend Manager Software Engineer (Hands-On) | Partners A — Wellhub</text>
+<text x="16" y="325" fill="#8b949e" xml:space="preserve">     Himalayas · eligibility: eligible · salary not listed · 5d</text>
+<text x="16" y="346" fill="#c9d1d9" xml:space="preserve"></text>
+<text x="16" y="367" fill="#d2a8ff" xml:space="preserve">Claude reads each kept job, checks the company, tailors an ATS-checked CV. You apply.</text>
 </g></svg>

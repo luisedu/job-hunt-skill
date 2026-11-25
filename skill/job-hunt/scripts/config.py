@@ -7,7 +7,7 @@ DEFAULTS = {
     "gupyTerms": [],
     "sources": {
         "remoterocketship": False, "remoteok": True, "remotive": True, "himalayas": True, "jobicy": True,
-        "arbeitnow": False, "weworkremotely": True, "workingnomads": True, "getonbrd": False, "gupy": False, "hn": True, "ats": True,
+        "arbeitnow": False, "weworkremotely": True, "workingnomads": True, "getonbrd": False, "gupy": False, "hn": True, "ats": True, "perfectrole": False,
     },
     "remoteRocketship": {"apiKeyFile": "~/.config/remoterocketship/api-key", "seniority": ["mid", "senior"], "maxPages": 3},
     "roles": {
