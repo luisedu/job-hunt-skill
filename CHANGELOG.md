@@ -11,6 +11,7 @@
   - CI actions are pinned to commits, with a read-only token.
 - **Wrong results fixed:**
   - A bare "Remote" location no longer excludes a job (it's treated as unstated).
+  - Remote-only workspaces now exclude hybrid jobs outside `hybridOkCities` (they slipped through when the city was in `allowed`).
   - "Must be located in a time zone…" with no country is a flag, not an exclusion.
   - "Works for us" no longer reads as the USA.
   - Salary text: "50-60k", "4.000" and yearly ranges with dots now parse correctly; day and week rates are recognised.
