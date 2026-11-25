@@ -43,6 +43,19 @@ class OutcomesTest(unittest.TestCase):
         self.assertIn("role excluded", exc[("Mixed Co", "Senior Frontend Engineer")]["reasons"])
         self.assertIn(("Mixed Co", "Frontend Developer"), keep)
 
+    def test_unlisted_pay_option(self):
+        fm = os.path.join(self.ws, "search", "filters.md")
+        md = open(fm).read()
+        self.assertIn('"unlisted": "flag"', md)  # default: keep with a flag
+        open(fm, "w").write(md.replace('"unlisted": "flag"', '"unlisted": "hide"', 1))
+        paid = dict(J("Frontend Engineer", "PaidCo"), source="Himalayas", sal={"min": 80000, "max": 90000, "cur": "EUR", "per": "year"})
+        raw = os.path.join(self.ws, "search", "scans", "raw-2026-06-16.json")
+        json.dump([J("Frontend Engineer", "NoPayCo"), J("Frontend Engineer", "PaidCo"), paid], open(raw, "w"))
+        r = F.run(self.ws, raw, TODAY)
+        exc = {j["company"]: j for j in r["excluded"]}
+        self.assertIn("salary not listed", exc["NoPayCo"]["reasons"])
+        self.assertIn("PaidCo", {j["company"] for j in r["keep"]})  # a duplicate with pay brings it back
+
     def test_scan_log_codes_and_idempotent(self):
         n = O.log_scan(self.ws, self.r["path"])
         self.assertEqual(n, 4)

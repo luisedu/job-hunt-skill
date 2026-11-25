@@ -17,6 +17,8 @@ import argparse, collections, datetime as dt, glob, json, os, re, subprocess, sy
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from config import load_config  # noqa: E402
+import eligibility as EL  # noqa: E402
+import netpay  # noqa: E402
 
 GLOBAL = re.compile(r"worldwide|anywhere|global|unrestricted|all countries|any (location|country|timezone)|work from anywhere", re.I)
 COUNTRY_WORDS = re.compile(
@@ -109,6 +111,26 @@ def monthly_pay(j, cfg, fx):
     return round(lo * f * fx[cur]), round(hi * f * fx[cur])
 
 
+def attach_net(j, cfg):
+    """Net monthly range in home currency, across the plausible contracts for this job (None without a pay range
+    or without a net model / net rates in the person block)."""
+    person, pay = cfg["person"], j.get("pay_monthly")
+    j["pay_net"], j["net_contracts"] = None, []
+    if not pay or not (person.get("netModel") or person.get("netRates")):
+        return None
+    s = j.get("sal") or {}
+    per = str(s.get("per") or s.get("text") or "").lower()
+    basis = "year" if re.search(r"year|annual|\byr\b|/y\b", per) else "rate" if per else None
+    home = cfg["profile"]["currency"].upper()
+    at_home = (str(s.get("cur") or "").upper() == home) or j.get("source") == "Gupy" or (home == "BRL" and "R$" in per)
+    lo = netpay.scenarios(pay[0], j.get("contract"), at_home, person, basis)
+    hi = netpay.scenarios(pay[1], j.get("contract"), at_home, person, basis)
+    nets = [r["net"] for r in list(lo.values()) + list(hi.values()) if r and r.get("net") is not None]
+    if nets:
+        j["pay_net"], j["net_contracts"] = (min(nets), max(nets)), sorted(hi)
+    return j["pay_net"]
+
+
 def classify(j, cfg, R, fx, today):
     title, text, loc = j["title"], j["text"], j["loc"]
     head = text[:3000]
@@ -171,18 +193,31 @@ def classify(j, cfg, R, fx, today):
     if gm:
         reasons.append(f'talent pool / ghost ("{gm.group(0)}")')
 
+    # ---- eligibility (advisory: flags only; hard location rules above still decide)
+    el = EL.eligibility(j, cfg["person"], today)
+    j["eligibility"], j["eligibility_reasons"], j["contract"] = el["verdict"], el["reasons"], el["contract"]
+    if el["verdict"] in ("relocation", "no") and cfg["person"].get("residence"):
+        flags.append(f"eligibility: {el['verdict']} ({el['reasons'][0]})")
+
     # ---- pay
     P = cfg["pay"]
     pay = monthly_pay(j, cfg, fx)
     j["pay_monthly"] = pay
     cur = cfg["profile"]["currency"]
-    if pay and P["floorMonthly"]:
-        if pay[1] < P["floorMonthly"]:
-            reasons.append(f"pay max ~{cur} {pay[1]:,}/mo < floor {P['floorMonthly']:,}")
-        elif pay[0] < P["floorMonthly"]:
-            flags.append(f"range starts below floor ({cur} {pay[0]:,}–{pay[1]:,}/mo)")
+    net = attach_net(j, cfg)
+    basis = net if P.get("floorBasis") == "net" and net else pay
+    label = "net" if basis is net and net else "pay"
+    if basis and P["floorMonthly"]:
+        if basis[1] < P["floorMonthly"]:
+            reasons.append(f"{label} max ~{cur} {basis[1]:,}/mo < floor {P['floorMonthly']:,}")
+        elif basis[0] < P["floorMonthly"]:
+            flags.append(f"range starts below floor ({label} {cur} {basis[0]:,}–{basis[1]:,}/mo)")
     elif not pay:
-        flags.append("salary not listed")
+        unlisted = P.get("unlisted", "flag")
+        if unlisted == "hide":
+            reasons.append("salary not listed")
+        elif unlisted != "keep":
+            flags.append("salary not listed")
 
     # ---- companies
     co = j["company"].lower()
@@ -220,7 +255,8 @@ def fit_score(j, cfg, R):
         s += 4
     if R["allowed"].search(j["loc"] + " " + j["text"][:3000]):
         s += 3
-    if j.get("pay_monthly") and cfg["pay"]["floorMonthly"] and j["pay_monthly"][1] >= cfg["pay"]["floorMonthly"]:
+    pay = j.get("pay_net") if cfg["pay"].get("floorBasis") == "net" and j.get("pay_net") else j.get("pay_monthly")
+    if pay and cfg["pay"]["floorMonthly"] and pay[1] >= cfg["pay"]["floorMonthly"]:
         s += 2
     s -= 2 * sum(1 for p in cfg["penalizeKeywords"] if re.search(p, t, re.I))
     return s
@@ -265,7 +301,11 @@ def run(ws, raw_path=None, today=None):
             withpay = [x for x in g if x.get("pay_monthly")]
             if withpay:
                 best["pay_monthly"], best["sal"] = withpay[-1]["pay_monthly"], withpay[-1]["sal"]
+                attach_net(best, cfg)
                 best["flags"] = [f for f in best["flags"] if f != "salary not listed"]
+                best["reasons"] = [r for r in best["reasons"] if r != "salary not listed"]
+                if best["status"] == "excluded" and not best["reasons"]:
+                    best["status"] = "keep"
         best["sources"] = sorted({x["source"] for x in g})
         best["urls"] = list(dict.fromkeys(x["url"] for x in g if x["url"]))[:3]
         if len(dates) >= 2 and (dt.date.fromisoformat(dates[-1]) - dt.date.fromisoformat(dates[0])).days > cfg["ghost"]["repostSpanDays"]:
@@ -299,8 +339,10 @@ def main():
     print("excluded by reason:", r["reasons"][:12])
     for j in r["keep"]:
         pay = f"{r['currency']} {j['pay_monthly'][0]:,}–{j['pay_monthly'][1]:,}/mo" if j.get("pay_monthly") else "no salary"
+        if j.get("pay_net"):
+            pay += f" → net ≈ {j['pay_net'][0]:,}–{j['pay_net'][1]:,} ({'/'.join(j['net_contracts'])}; estimate)"
         print(f"\n[{j['fit']}] {j['title']} — {j['company']} | {'+'.join(j['sources'])} | {j.get('age_days')}d | {pay}")
-        print("   loc:", j["loc"][:110])
+        print("   loc:", j["loc"][:110], f"| eligibility: {j.get('eligibility')}")
         if j["flags"]:
             print("   flags:", "; ".join(j["flags"]))
         print("  ", j["urls"][0] if j["urls"] else "")
