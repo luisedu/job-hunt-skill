@@ -90,6 +90,7 @@ class Eligibility(unittest.TestCase):
     def test_us_payroll(self):
         r = self.v("Benefits: 401(k) match. W-2 employees only.", "Remote")
         self.assertEqual((r["verdict"], r["contract"]), ("no", "employee_foreign"))
+        self.assertEqual(self.v("Benefits for US staff: 401(k) match.", "Worldwide")["verdict"], "likely")
 
     def test_contracts(self):
         self.assertEqual(EL.detect_contract(job("We hire globally through Deel.")), "eor")

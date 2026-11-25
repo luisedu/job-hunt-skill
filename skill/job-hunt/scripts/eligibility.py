@@ -120,8 +120,12 @@ def eligibility(job, person, today=None):
             verdict = "no"
             reasons.append(f"requires the right to work in {place.strip()}")
     if US_PAYROLL.search(text) and res != "US" and "US" not in cits:
-        verdict = "no" if verdict in (None, "likely", "eligible") else verdict
-        reasons.append("US payroll/clearance signal (W-2, clearance, US person)")
+        if WORLD.search(loc) and verdict in (None, "likely", "eligible"):
+            verdict = "likely"  # worldwide role that also lists US benefits: non-US hires are often contractors
+            reasons.append("mentions US payroll/benefits (W-2, 401k, clearance): ask how they hire outside the US")
+        else:
+            verdict = "no" if verdict in (None, "likely", "eligible") else verdict
+            reasons.append("US payroll/clearance signal (W-2, clearance, US person)")
 
     loc_cs = countries(loc)
     if verdict is None:
