@@ -49,7 +49,7 @@ class Location(unittest.TestCase):
         cls.ws, r = init()
         assert r.returncode == 0, r.stderr
         raw = os.path.join(cls.ws, "search", "scans", "raw-2026-06-15.json")
-        jobs = [J("BareRemote", "Remote"), J("FullyRemote", "100% Remote"), J("UsOnly", "Remote - USA"),
+        jobs = [J("BareRemote", "Remote"), J("FullyRemote", "100% Remote"), J("UsOnly", "Remote - USA"), J("HybridCo", "Hybrid - Lisbon"), J("HybridElse", "Hybrid, Porto"),
                 J("TzCo", "", TXT + " You must be located in a time zone with 4 hours overlap with CET."),
                 J("UsText", "", TXT + " Candidates must be located in the United States.")]
         with open(raw, "w") as f:
@@ -70,6 +70,10 @@ class Location(unittest.TestCase):
     def test_named_country_still_excluded(self):
         self.assertIn("UsOnly", self.exc)
         self.assertIn("UsText", self.exc)
+
+    def test_hybrid_only_in_listed_cities(self):
+        self.assertIn("HybridCo", self.keep)  # the example lists lisbon in hybridOkCities
+        self.assertIn("hybrid", self.exc["HybridElse"]["reasons"])
 
     def test_condition_without_a_country_is_a_flag(self):
         self.assertIn("TzCo", self.keep)

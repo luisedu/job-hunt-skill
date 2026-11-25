@@ -206,6 +206,8 @@ def classify(j, cfg, R, fx, today):
         reasons.append("onsite")
     elif L["remoteOnly"] and j["source"].startswith("HN") and not re.search("remote", loc, re.I):
         reasons.append("not remote")
+    elif L["remoteOnly"] and re.search(r"\bhybrid\b|h[íi]brido", loc, re.I) and not R["hybrid_city"].search(loc):
+        reasons.append("hybrid")
     place = re.sub(r"(?:100%\s*|fully\s+)?\bremot[eo]\b|[()/|]", " ", locl)  # a bare "Remote" names no place
     stated = place.strip(" ,;-") not in ("", "?", "unrestricted") and j["source"] not in ("HN WhoIsHiring", "Gupy")
     if stated and not GLOBAL.search(locl) and not R["allowed"].search(locl) and not R["hybrid_city"].search(locl):
