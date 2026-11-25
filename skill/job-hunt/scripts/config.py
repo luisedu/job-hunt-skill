@@ -29,6 +29,7 @@ DEFAULTS = {
     "penalizeKeywords": [],
     "excludedCompanies": [],
     "excludedRoles": [],
+    "skills": {"extra": []},
     "atsBoards": {"greenhouse": [], "ashby": [], "lever": [], "workable": []},
     "fallbackFxPerCurrency": {},
 }
@@ -41,7 +42,7 @@ def _merge(base, over):
     return out
 
 
-def load_config(workspace):
+def load_config(workspace, require_queries=True):
     path = os.path.join(workspace, "search", "filters.md")
     with open(path, encoding="utf-8") as fh:
         md = fh.read()
@@ -49,6 +50,6 @@ def load_config(workspace):
     if not m:
         raise SystemExit(f"No ```json block found in {path}")
     cfg = _merge(DEFAULTS, json.loads(m.group(1)))
-    if not cfg["queries"]:
+    if require_queries and not cfg["queries"]:
         raise SystemExit("filters.md: 'queries' is empty: add the search terms for your target role")
     return cfg

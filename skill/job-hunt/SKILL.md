@@ -85,7 +85,22 @@ python3 SKILL_DIR/scripts/outcomes.py --workspace <ws> calibrate   # does the fi
 - **Calibration is advisory.** Report `calibrate` as it prints it. With few outcomes it says "n too small" or "insufficient": say so, and never turn 2 of 3 into a percentage. Never retune the fit weights automatically. Suggest changes and let the user decide.
 - **Retention.** After a hire, ask for short check-ins at 30, 90, 180 and 365 days (`checkin`: satisfaction 1–5, did the job match the posting 1–5, would stay). The posting saved at apply time (`outcomes/postings/`) is the reference. This tells the user, and the search, which kinds of job actually last.
 
-## 7. Tuning
+## 7. Insights and decisions
+Scripts that turn the scans and the outcome log into decisions. They're read-only, free (no model calls) and honest about small numbers: below 5 cases they show counts, not percentages.
+```bash
+python3 SKILL_DIR/scripts/insights.py --workspace <ws> weekly                 # search health + one suggestion
+python3 SKILL_DIR/scripts/insights.py --workspace <ws> employers --suggest-ats # who keeps posting jobs you can take
+python3 SKILL_DIR/scripts/insights.py --workspace <ws> companies              # reply rate, days to reply, interview formats
+python3 SKILL_DIR/scripts/insights.py --workspace <ws> skills                 # most-requested skills you lack; pay linked to skills
+python3 SKILL_DIR/scripts/offers.py   --workspace <ws>                        # compare offers: net, benefits, currency risk
+```
+- **weekly:** offer it at the first session of each week. Relay the suggestion and the follow-ups due.
+- **employers:** after a week or two of scans, show the companies that keep posting eligible roles. `--suggest-ats` finds their job boards by name. Tell the user to check that each board is the right company. Only use `--add`, which writes them into `filters.md`, after the user agrees.
+- **companies:** use it before a follow-up or an interview, and to decide which companies to drop. Mention a company's interview format (e.g. AI audio bot) when it's known.
+- **skills:** list gaps as learning options, never as claims. Skills in the profile's "Do NOT claim" list stay gaps until the user confirms new experience. Users add terms via `filters.md` → `skills.extra`.
+- **offers:** use it whenever there are two or more offers, or a CLT-vs-PJ-vs-contract question. Fill `interview/offers.json` with the user's offers. Show net, benefits, the currency-move scenarios, the last 12 months' exchange-rate range, and the local-employee gross that would give the same net. Equity is listed but never counted. Always say "estimate, not tax advice".
+
+## 8. Tuning
 - The user changes a hard rule → edit `memory.md` **and** the matching `search/filters.md` JSON value, and add a line to the tuning log.
 - A source breaks → note it in `search/sources.md`, and disable it in `filters.md` or fix `scan.py`.
 - Too much noise or too few jobs → adjust `queries`, `titleKeywords`, `textKeywords`, `minTextHits`, `allowed`, and log the change.
