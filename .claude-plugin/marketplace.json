@@ -1,8 +1,8 @@
 {
   "name": "job-hunt-skill",
   "owner": {"name": "luisedu", "url": "https://github.com/luisedu"},
-  "metadata": {"description": "The job-hunt skill as a Claude Code plugin", "version": "0.2.0"},
+  "metadata": {"description": "The job-hunt skill as a Claude Code plugin", "version": "0.2.1"},
   "plugins": [
-    {"name": "job-hunt", "source": "./", "description": "Honest, low-noise job search from a local workspace. It never applies for you.", "version": "0.2.0", "category": "productivity"}
+    {"name": "job-hunt", "source": "./", "description": "Honest, low-noise job search from a local workspace. It never applies for you.", "version": "0.2.1", "category": "productivity"}
   ]
 }
