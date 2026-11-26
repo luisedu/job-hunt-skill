@@ -43,6 +43,19 @@ class Salary(unittest.TestCase):
                 self.assertEqual(F.period(txt), per)
 
 
+class TextPay(unittest.TestCase):
+    def test_text_pay(self):
+        cases = {"Compensation $15-$25 (Depending on skillsets)": ([15, 25], "USD", ""),
+                 "Compensation & Benefits $40 to $75 per hour": ([40, 75], "USD", "hour"),
+                 "Salary: USD 120,000 – 150,000 per year": ([120000, 150000], "USD", "year"),
+                 "The pay range is €60k–80k annually.": ([60000, 80000], "EUR", "year"),
+                 "We raised $10M from top investors": None, "competitive salary and $2,000 learning budget": None,
+                 "Compensation: competitive, plus $500 stipend": None}
+        for txt, want in cases.items():
+            with self.subTest(txt=txt):
+                self.assertEqual(F.text_pay(txt), want)
+
+
 class Location(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -51,7 +64,10 @@ class Location(unittest.TestCase):
         raw = os.path.join(cls.ws, "search", "scans", "raw-2026-06-15.json")
         jobs = [J("BareRemote", "Remote"), J("FullyRemote", "100% Remote"), J("UsOnly", "Remote - USA"), J("HybridCo", "Hybrid - Lisbon"), J("HybridElse", "Hybrid, Porto"),
                 J("TzCo", "", TXT + " You must be located in a time zone with 4 hours overlap with CET."),
-                J("UsText", "", TXT + " Candidates must be located in the United States.")]
+                J("UsText", "", TXT + " Candidates must be located in the United States."),
+                J("HiringUs", "Remote", TXT + " We are fully remote, hiring for someone in the United States."),
+                J("LowPayText", "Remote, Europe", TXT + " Availability: part-time. Compensation €8-€10 (depending on skills)."),
+                J("BudgetText", "Remote, Europe", TXT + " Competitive salary and $2,000 learning budget.")]
         with open(raw, "w") as f:
             json.dump(jobs, f)
         r = F.run(cls.ws, raw, TODAY)
@@ -70,6 +86,12 @@ class Location(unittest.TestCase):
     def test_named_country_still_excluded(self):
         self.assertIn("UsOnly", self.exc)
         self.assertIn("UsText", self.exc)
+        self.assertIn("HiringUs", self.exc)
+
+    def test_pay_stated_only_in_text(self):
+        self.assertIn("LowPayText", self.exc)  # €8-10 with no period: read as hourly, far below the floor
+        self.assertTrue(any("floor" in r for r in self.exc["LowPayText"]["reasons"]))
+        self.assertIn("BudgetText", self.keep)  # a budget next to "salary" is not pay
 
     def test_hybrid_only_in_listed_cities(self):
         self.assertIn("HybridCo", self.keep)  # the example lists lisbon in hybridOkCities
