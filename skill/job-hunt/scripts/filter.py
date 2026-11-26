@@ -25,6 +25,7 @@ RESTRICT = re.compile(
     r"(?:must|need to|required to|should)\s+(?:be\s+)?(?:currently\s+)?(?:be\s+)?(?:based|located|reside|residing|live|living)\s+in\s+(?:the\s+)?([a-z .]{2,30})"
     r"|authori[sz]ed to work in (?:the\s+)?([a-z .]{2,20})"
     r"|only (?:open to |accepting )?(?:candidates|applicants) (?:based |located |residing )?in (?:the\s+)?([a-z .]{2,20})"
+    r"|hiring (?:for )?(?:someone|candidates|people|engineers) (?:who (?:is|are) )?(?:based |located |residing )?in (?:the\s+)?([a-z .]{2,20})"
     r"|\b(us|usa|u\.s\.|uk|eu|europe|canada)[- ]only\b"
     r"|((?:us|u\.s\.) citizen|green card|security clearance|ts/sci|\bitar\b)", re.I)
 GHOST = re.compile(r"talent pool|banco de talentos|future opportunit|evergreen|always (be )?hiring|pipeline for future|"
@@ -110,6 +111,24 @@ def period(txt):
     return ""
 
 
+CURSYM = r"(?:US\$|USD|\$|€|EUR|£|GBP)"
+TEXT_PAY = re.compile(r"\b(?:compensation|salary|pay|hourly rate|remuneration|wage)\b(?:\s*(?:&|and)\s*benefits)?[\s:\-–(]*"
+                      r"(?:(?:range|rate|band)\s*)?(?:(?:is|of|between|from|up to)\s*)?[:\s]*"
+                      r"(" + CURSYM + r"\s?\d[\d.,]*\s?k?(?:\s*(?:-|–|to)\s*" + CURSYM + r"?\s?\d[\d.,]*\s?k?)?)([^.\n]{0,25})", re.I)
+
+
+def text_pay(text):
+    """Foreign-currency pay stated only in the posting text after a pay word ('Compensation $15-$25 per hour').
+    Returns (amounts, currency, period) or None."""
+    m = TEXT_PAY.search(text or "")
+    if not m:
+        return None
+    snip = m.group(1)
+    cur = "EUR" if re.search(r"€|EUR", snip) else "GBP" if re.search(r"£|GBP", snip) else "USD"
+    vals = amounts(snip)
+    return (vals, cur, period(snip + " " + m.group(2))) if vals else None
+
+
 def monthly_pay(j, cfg, fx):
     """Return (low, high) monthly pay in home currency, or None."""
     s, hours = j.get("sal"), cfg["pay"]["hoursPerMonth"]
@@ -127,6 +146,8 @@ def monthly_pay(j, cfg, fx):
             v = float(re.sub(r"[.,]", "", m.group(1)))
             if (floor * 0.1 if floor else 500) <= v <= (floor * 20 if floor else 10 ** 6):
                 vals, cur, per = [v], home, "month"
+        if not vals and (tp := text_pay(j.get("text", ""))):
+            vals, cur, per = tp
     if s and "text" not in s:
         for x in (s.get("min"), s.get("max")):
             try:
