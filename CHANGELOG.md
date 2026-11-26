@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.2.4 (2026-11-26)
 - **Filter, pay in the text:** when a job has no salary field, pay stated after a pay word in the posting (e.g. "Compensation $15-$25", "Salary: USD 120,000 – 150,000 per year") now counts for the pay floor and net estimate. Budgets and stipends next to "salary" are ignored.
 - **Filter, location:** "hiring for someone in <country>" in the posting text is a restriction, like "must be located in".
 - **Docs:** Portuguese (Brazil) README, `README.pt-BR.md`, with a language switch at the top of both READMEs.
