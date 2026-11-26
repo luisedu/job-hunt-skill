@@ -1,5 +1,8 @@
 # Changelog
 
+## Unreleased
+- **Docs:** Portuguese (Brazil) README, `README.pt-BR.md`, with a language switch at the top of both READMEs.
+
 ## 0.2.3 (2026-11-25)
 Beta readiness, from a clean install of the plugin and a live first run.
 - **Plugin installs:** the workspace `CLAUDE.md` names the installed skill instead of its versioned cache folder, which changes on every `/plugin update`.

@@ -1,5 +1,7 @@
 # job-hunt: a Claude Code skill for an honest, low-noise job search
 
+**English** | [Português](README.pt-BR.md)
+
 [![tests](https://github.com/luisedu/job-hunt-skill/actions/workflows/tests.yml/badge.svg)](https://github.com/luisedu/job-hunt-skill/actions/workflows/tests.yml) ![status: beta](https://img.shields.io/badge/status-beta-orange)
 
 A [Claude Code](https://claude.com/claude-code) skill that runs your job search from a local folder of Markdown files:
